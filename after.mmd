@@ -1,15 +1,16 @@
 classDiagram
     class WeatherApiClient {
-        +fetchWeatherData() String
+        - String TARGET_URL
+        +fetchWeatherData()
     }
 
     class WeatherDataParser {
-        +parseWeatherData(jsonData: String) List~String[]~
+        +parseWeatherData(String jsonData)
     }
 
     class WeatherForecastApp {
-        main()
+        + main(String[] args)
     }
 
-    WeatherForecastApp --> WeatherApiClient : uses
-    WeatherForecastApp --> WeatherDataParser : uses
+    WeatherForecastApp --> WeatherApiClient
+    WeatherForecastApp --> WeatherDataParser
