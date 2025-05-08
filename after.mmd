@@ -1,0 +1,15 @@
+classDiagram
+    class WeatherApiClient {
+        +fetchWeatherData() String
+    }
+
+    class WeatherDataParser {
+        +parseWeatherData(jsonData: String) List~String[]~
+    }
+
+    class WeatherForecastApp {
+        main()
+    }
+
+    WeatherForecastApp --> WeatherApiClient : uses
+    WeatherForecastApp --> WeatherDataParser : uses
