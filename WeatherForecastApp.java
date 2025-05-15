@@ -12,10 +12,10 @@ import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+/*たつき */
 /**
  * 天気予報アプリ - 本体
- * このアプリケーションは、気象庁のWeb APIから大阪府の天気予報データを取得して表示しする
+ * このアプリケーションは、気象庁のWeb APIから大阪府の天気予報データを取得して表示する
  *
  * @author n.katayama
  * @version 1.0
