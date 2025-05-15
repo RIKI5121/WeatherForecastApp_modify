@@ -77,7 +77,7 @@ public class WeatherForecastApp {
         WeatherDataParser dataParser = new WeatherDataParser();
 
         try {
-            // 天気データを取得
+            // 天気データを取る
             String jsonData = apiClient.fetchWeatherData();
 
             // 天気データを解析
