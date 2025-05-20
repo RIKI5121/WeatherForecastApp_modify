@@ -12,6 +12,7 @@ import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 /*たつき */
 /**
  * 天気予報アプリ - 本体
@@ -87,11 +88,25 @@ public class WeatherForecastApp {
             for (String[] weather : weatherList) {
                 LocalDateTime dateTime = LocalDateTime.parse(
                         weather[0], DateTimeFormatter.ISO_DATE_TIME);
-                System.out.println(
-                        dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd")) + " " + weather[1]);
+                String dateStr = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+                String weatherStr = convertToAnimalStyle(weather[1]);
+                System.out.println(dateStr + " " + weatherStr);
             }
         } catch (IOException | URISyntaxException e) {
             System.out.println("エラーが発生しました: " + e.getMessage());
         }
+    }
+
+    public static String convertToAnimalStyle(String weather) {
+        String emoji = "";
+        if (weather.contains("晴")) {
+            emoji = "☀️";
+        } else if (weather.contains("曇")) {
+            emoji = "☁️";
+        } else if (weather.contains("雨")) {
+            emoji = "☔";
+        }
+
+        return weather + " だにゃ〜" + emoji;
     }
 }
