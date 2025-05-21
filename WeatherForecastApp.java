@@ -103,7 +103,7 @@ public class WeatherForecastApp {
         if (weather.contains("晴")) {
             phrase = "猫「晴れだにゃ～」"; // 猫
         } else if (weather.contains("曇")) {
-            phrase = "牛「「曇りモ〜」"; // 牛
+            phrase = "牛「曇りモ〜」"; // 牛
         } else if (weather.contains("雨")) {
             phrase = "カエル「雨ゲロゲロ～」"; // カエル
         } else {
