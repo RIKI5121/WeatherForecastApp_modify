@@ -99,16 +99,25 @@ public class WeatherForecastApp {
 
     public static String convertToAnimalStyle(String weather) {
         String phrase;
-
+        String colorCode = "";  // 背景色のコード
+    
         if (weather.contains("晴")) {
             phrase = "猫「晴れだにゃ～」"; // 猫
+            colorCode = "\u001B[43m"; // 背景色を黄色に
         } else if (weather.contains("曇")) {
             phrase = "牛「曇りモ〜」"; // 牛
+            colorCode = "\u001B[48;5;235m"; // 背景色を灰色に
+
         } else if (weather.contains("雨")) {
             phrase = "カエル「雨ゲロゲロ～」"; // カエル
+            colorCode = "\u001B[44m"; // 背景色を青に
         } else {
             phrase = weather + "（よくわからない天気だね）";
+            colorCode = "\u001B[47m"; // 背景色を白に
         }
-        return phrase;
+    
+        // 色をリセット
+        String resetCode = "\u001B[0m";
+        return colorCode + phrase + resetCode;  // 色付きのテキストを返す
     }
 }
