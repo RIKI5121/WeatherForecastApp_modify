@@ -98,15 +98,17 @@ public class WeatherForecastApp {
     }
 
     public static String convertToAnimalStyle(String weather) {
-        String emoji = "";
-        if (weather.contains("晴")) {
-            emoji = "☀️";
-        } else if (weather.contains("曇")) {
-            emoji = "☁️";
-        } else if (weather.contains("雨")) {
-            emoji = "☔";
-        }
+        String phrase;
 
-        return weather + " だにゃ〜" + emoji;
+        if (weather.contains("晴")) {
+            phrase = "猫「晴れだにゃ～」"; // 猫
+        } else if (weather.contains("曇")) {
+            phrase = "牛「「曇りモ〜」"; // 牛
+        } else if (weather.contains("雨")) {
+            phrase = "カエル「雨ゲロゲロ～」"; // カエル
+        } else {
+            phrase = weather + "（よくわからない天気だね）";
+        }
+        return phrase;
     }
 }
