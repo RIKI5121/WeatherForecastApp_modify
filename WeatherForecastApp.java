@@ -107,6 +107,7 @@ public class WeatherForecastApp {
         } else if (weather.contains("曇")) {
             phrase = "牛「曇りモ〜」"; // 牛
             colorCode = "\u001B[48;5;235m"; // 背景色を灰色に
+
         } else if (weather.contains("雨")) {
             phrase = "カエル「雨ゲロゲロ～」"; // カエル
             colorCode = "\u001B[44m"; // 背景色を青に
