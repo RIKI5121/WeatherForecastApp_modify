@@ -14,10 +14,6 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/**
- * 天気予報アプリ - ネコ版
- * 気象庁のWeb APIから大阪府の天気予報を取得して、ネコがしゃべっているように表示します。
- */
 public class WeatherForecastApp {
 
     private static final String TARGET_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/270000.json";
@@ -45,35 +41,24 @@ public class WeatherForecastApp {
                 JSONObject timeSeriesObj = rootArray.getJSONObject(0)
                         .getJSONArray("timeSeries").getJSONObject(0);
 
-                List<String> timeDefines = new ArrayList<>();
-                List<String> weathers = new ArrayList<>();
-                List<String> pops = new ArrayList<>();
-                List<String> temps = new ArrayList<>();
-
                 JSONArray timeDefinesArray = timeSeriesObj.getJSONArray("timeDefines");
                 JSONArray areasArray = timeSeriesObj.getJSONArray("areas");
                 JSONArray weathersArray = areasArray.getJSONObject(0).getJSONArray("weathers");
 
-                // "pops"と"temps"が別の構造になっている場合があるので、適切に確認
-                JSONArray popsArray = areasArray.getJSONObject(0).optJSONArray("pops");
-                JSONArray tempsArray = areasArray.getJSONObject(0).optJSONArray("temps");
+                List<String> timeDefines = new ArrayList<>();
+                List<String> weathers = new ArrayList<>();
 
                 for (int i = 0; i < timeDefinesArray.length(); i++) {
                     timeDefines.add(timeDefinesArray.getString(i));
                     weathers.add(weathersArray.getString(i));
-                    pops.add(popsArray != null ? popsArray.getString(i) : "N/A"); // popsがnullの場合、N/Aをセット
-                    temps.add(tempsArray != null ? tempsArray.getString(i) : "N/A"); // tempsがnullの場合、N/Aをセット
                 }
 
-                // 今日の日付を取得
-                LocalDateTime today = LocalDateTime.now();
-                String todayDate = today.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-
-                // 今日と明日の6時、12時、18時、24時の天気を表示
-                int[] targetHours = { 6, 12, 18, 24 }; // 対象の時間
-                for (int hour : targetHours) {
-                    String targetTime = todayDate + " " + (hour < 10 ? "0" + hour : hour) + ":00";
-                    displayWeatherAt(targetTime, timeDefines, weathers, pops, temps);
+                // 出力処理
+                for (int i = 0; i < timeDefines.size(); i++) {
+                    LocalDateTime dateTime = LocalDateTime.parse(timeDefines.get(i), DateTimeFormatter.ISO_DATE_TIME);
+                    String formattedDate = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"));
+                    String weather = weathers.get(i);
+                    System.out.println(formatCatStyle(formattedDate, weather));
                 }
 
             } else {
@@ -91,52 +76,8 @@ public class WeatherForecastApp {
         }
     }
 
-
-    /**
-     * 指定した時刻の天気を表示
-     */
-    private static void displayWeatherAt(String targetTime, List<String> timeDefines, List<String> weathers,
-            List<String> pops, List<String> temps) {
-        for (int i = 0; i < timeDefines.size(); i++) {
-            String time = timeDefines.get(i);
-            if (time.startsWith(targetTime)) {
-                String weather = weathers.get(i);
-                String pop = pops.get(i);
-                String temp = temps.get(i);
-                System.out.println(formatCatStyle(targetTime, weather, pop, temp));
-                return;
-
-// WeatherForecastAppクラス: メイン処理
-public class WeatherForecastApp {
-    public static void main(String[] args) {
-        WeatherApiClient apiClient = new WeatherApiClient();
-        WeatherDataParser dataParser = new WeatherDataParser();
-
-        try {
-            // 天気データを取る
-            String jsonData = apiClient.fetchWeatherData();
-
-            // 天気データを解析
-            List<String[]> weatherList = dataParser.parseWeatherData(jsonData);
-
-            // 天気データを表示
-            for (String[] weather : weatherList) {
-                LocalDateTime dateTime = LocalDateTime.parse(
-                        weather[0], DateTimeFormatter.ISO_DATE_TIME);
-                String dateStr = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-                String weatherStr = convertToAnimalStyle(weather[1]);
-                System.out.println(dateStr + " " + weatherStr);
-
-            }
-        }
-        System.out.println(targetTime + "  天気データがありませんニャ");
-    }
-
-
-    /**
-     * ネコがしゃべっているような形式に整形する
-     */
-    private static String formatCatStyle(String date, String weather, String pop, String temp) {
+    // ネコっぽい話し方に変換
+    private static String formatCatStyle(String date, String weather) {
         String tail;
 
         if (weather.contains("雨")) {
@@ -151,33 +92,8 @@ public class WeatherForecastApp {
             tail = "ニャ";
         }
 
-        // 読みやすくするため、スペースを読点に変換
         String spokenWeather = weather.replaceAll("\\s+", "、");
 
-        return date + "  大阪のお天気は「" + spokenWeather + "」" + tail + "\n降水確率: " + pop + "  気温: " + temp + "°C";
-
-    public static String convertToAnimalStyle(String weather) {
-        String phrase;
-        String colorCode = "";  // 背景色のコード
-    
-        if (weather.contains("晴")) {
-            phrase = "猫「晴れだにゃ～」"; // 猫
-            colorCode = "\u001B[43m"; // 背景色を黄色に
-        } else if (weather.contains("曇")) {
-            phrase = "牛「曇りモ〜」"; // 牛
-            colorCode = "\u001B[48;5;235m"; // 背景色を灰色に
-
-        } else if (weather.contains("雨")) {
-            phrase = "カエル「雨ゲロゲロ～」"; // カエル
-            colorCode = "\u001B[44m"; // 背景色を青に
-        } else {
-            phrase = weather + "（よくわからない天気だね）";
-            colorCode = "\u001B[47m"; // 背景色を白に
-        }
-    
-        // 色をリセット
-        String resetCode = "\u001B[0m";
-        return colorCode + phrase + resetCode;  // 色付きのテキストを返す
-
+        return date + " の大阪のお天気は「" + spokenWeather + "」" + tail;
     }
 }
