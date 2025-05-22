@@ -5,6 +5,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -13,102 +14,122 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/*たつき */
 /**
- * 天気予報アプリ - 本体
- * このアプリケーションは、気象庁のWeb APIから大阪府の天気予報データを取得して表示する
- *
- * @author n.katayama
- * @version 1.0
+ * 天気予報アプリ - ネコ版
+ * 気象庁のWeb APIから大阪府の天気予報を取得して、ネコがしゃべっているように表示します。
  */
+public class WeatherForecastApp {
 
-// WeatherApiClientクラス: API通信を担当
-class WeatherApiClient {
     private static final String TARGET_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/270000.json";
 
-    public String fetchWeatherData() throws IOException, URISyntaxException {
-        URI uri = new URI(TARGET_URL);
-        URL url = uri.toURL();
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("GET");
-
-        int responseCode = connection.getResponseCode();
-        if (responseCode == HttpURLConnection.HTTP_OK) {
-            StringBuilder responseBody = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(connection.getInputStream(), "UTF-8"))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    responseBody.append(line);
-                }
-            }
-            return responseBody.toString();
-        } else {
-            throw new IOException("Failed to fetch data: Response code " + responseCode);
-        }
-    }
-}
-
-// WeatherDataParserクラス: データ解析を担当
-class WeatherDataParser {
-    public List<String[]> parseWeatherData(String jsonData) {
-        List<String[]> weatherList = new ArrayList<>();
-        JSONArray rootArray = new JSONArray(jsonData);
-        JSONObject timeStringObject = rootArray.getJSONObject(0)
-                .getJSONArray("timeSeries").getJSONObject(0);
-
-        JSONArray timeDefinesArray = timeStringObject.getJSONArray("timeDefines");
-        JSONArray weathersArray = timeStringObject.getJSONArray("areas")
-                .getJSONObject(0).getJSONArray("weathers");
-
-        for (int i = 0; i < timeDefinesArray.length(); i++) {
-            String dateTime = timeDefinesArray.getString(i);
-            String weather = weathersArray.getString(i);
-            weatherList.add(new String[] { dateTime, weather });
-        }
-
-        return weatherList;
-    }
-}
-
-// WeatherForecastAppクラス: メイン処理
-public class WeatherForecastApp {
     public static void main(String[] args) {
-        WeatherApiClient apiClient = new WeatherApiClient();
-        WeatherDataParser dataParser = new WeatherDataParser();
-
+        HttpURLConnection connection = null;
         try {
-            // 天気データを取得
-            String jsonData = apiClient.fetchWeatherData();
+            URI uri = new URI(TARGET_URL);
+            URL url = uri.toURL();
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
 
-            // 天気データを解析
-            List<String[]> weatherList = dataParser.parseWeatherData(jsonData);
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                StringBuilder responseBody = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        responseBody.append(line);
+                    }
+                }
 
-            // 天気データを表示
-            for (String[] weather : weatherList) {
-                LocalDateTime dateTime = LocalDateTime.parse(
-                        weather[0], DateTimeFormatter.ISO_DATE_TIME);
-                String dateStr = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-                String weatherStr = convertToAnimalStyle(weather[1]);
-                System.out.println(dateStr + " " + weatherStr);
+                JSONArray rootArray = new JSONArray(responseBody.toString());
+                JSONObject timeSeriesObj = rootArray.getJSONObject(0)
+                        .getJSONArray("timeSeries").getJSONObject(0);
+
+                List<String> timeDefines = new ArrayList<>();
+                List<String> weathers = new ArrayList<>();
+                List<String> pops = new ArrayList<>();
+                List<String> temps = new ArrayList<>();
+
+                JSONArray timeDefinesArray = timeSeriesObj.getJSONArray("timeDefines");
+                JSONArray areasArray = timeSeriesObj.getJSONArray("areas");
+                JSONArray weathersArray = areasArray.getJSONObject(0).getJSONArray("weathers");
+
+                // "pops"と"temps"が別の構造になっている場合があるので、適切に確認
+                JSONArray popsArray = areasArray.getJSONObject(0).optJSONArray("pops");
+                JSONArray tempsArray = areasArray.getJSONObject(0).optJSONArray("temps");
+
+                for (int i = 0; i < timeDefinesArray.length(); i++) {
+                    timeDefines.add(timeDefinesArray.getString(i));
+                    weathers.add(weathersArray.getString(i));
+                    pops.add(popsArray != null ? popsArray.getString(i) : "N/A"); // popsがnullの場合、N/Aをセット
+                    temps.add(tempsArray != null ? tempsArray.getString(i) : "N/A"); // tempsがnullの場合、N/Aをセット
+                }
+
+                // 今日の日付を取得
+                LocalDateTime today = LocalDateTime.now();
+                String todayDate = today.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+
+                // 今日と明日の6時、12時、18時、24時の天気を表示
+                int[] targetHours = { 6, 12, 18, 24 }; // 対象の時間
+                for (int hour : targetHours) {
+                    String targetTime = todayDate + " " + (hour < 10 ? "0" + hour : hour) + ":00";
+                    displayWeatherAt(targetTime, timeDefines, weathers, pops, temps);
+                }
+
+            } else {
+                System.out.println("データ取得に失敗しましたニャ…");
             }
-        } catch (IOException | URISyntaxException e) {
-            System.out.println("エラーが発生しました: " + e.getMessage());
+        } catch (URISyntaxException e) {
+            System.out.println("URIの構文が無効ですニャ: " + e.getMessage());
+        } catch (IOException e) {
+            System.out.println("通信エラーが発生したニャ: ");
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
     }
 
-    public static String convertToAnimalStyle(String weather) {
-        String phrase;
-
-        if (weather.contains("晴")) {
-            phrase = "猫「晴れだにゃ～」"; // 猫
-        } else if (weather.contains("曇")) {
-            phrase = "牛「「曇りモ〜」"; // 牛
-        } else if (weather.contains("雨")) {
-            phrase = "カエル「雨ゲロゲロ～」"; // カエル
-        } else {
-            phrase = weather + "（よくわからない天気だね）";
+    /**
+     * 指定した時刻の天気を表示
+     */
+    private static void displayWeatherAt(String targetTime, List<String> timeDefines, List<String> weathers,
+            List<String> pops, List<String> temps) {
+        for (int i = 0; i < timeDefines.size(); i++) {
+            String time = timeDefines.get(i);
+            if (time.startsWith(targetTime)) {
+                String weather = weathers.get(i);
+                String pop = pops.get(i);
+                String temp = temps.get(i);
+                System.out.println(formatCatStyle(targetTime, weather, pop, temp));
+                return;
+            }
         }
-        return phrase;
+        System.out.println(targetTime + "  天気データがありませんニャ");
+    }
+
+    /**
+     * ネコがしゃべっているような形式に整形する
+     */
+    private static String formatCatStyle(String date, String weather, String pop, String temp) {
+        String tail;
+
+        if (weather.contains("雨")) {
+            tail = "っぽいニャ～";
+        } else if (weather.contains("くもり") && weather.contains("晴")) {
+            tail = "になりそうニャ";
+        } else if (weather.contains("晴")) {
+            tail = "みたいニャ～";
+        } else if (weather.contains("くもり")) {
+            tail = "かもニャ";
+        } else {
+            tail = "ニャ";
+        }
+
+        // 読みやすくするため、スペースを読点に変換
+        String spokenWeather = weather.replaceAll("\\s+", "、");
+
+        return date + "  大阪のお天気は「" + spokenWeather + "」" + tail + "\n降水確率: " + pop + "  気温: " + temp + "°C";
     }
 }
