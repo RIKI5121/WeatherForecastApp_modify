@@ -5,11 +5,16 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.ArrayList;
 import org.json.*;
 
 public class WeatherForecastGUI {
 
     private static final String TARGET_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/270000.json";
+
+    private static List<String> forecastList = new ArrayList<>();
+    private static int forecastIndex = 0;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(WeatherForecastGUI::createAndShowGUI);
@@ -18,28 +23,45 @@ public class WeatherForecastGUI {
     private static void createAndShowGUI() {
         JFrame frame = new JFrame("大阪のお天気（ネコ風）");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(500, 400);
+        frame.setSize(600, 500);
 
         JTextArea textArea = new JTextArea();
         textArea.setEditable(false);
         textArea.setFont(new Font("Serif", Font.PLAIN, 16));
-
         JScrollPane scrollPane = new JScrollPane(textArea);
-        frame.add(scrollPane, BorderLayout.CENTER);
 
-        JButton refreshButton = new JButton("最新の天気を取得するニャ");
-        refreshButton.addActionListener(_ -> {
-            textArea.setText("取得中ニャ……");
-            String forecast = fetchForecast();
-            textArea.setText(forecast);
+        JButton loadButton = new JButton("お天気を読み込むニャ");
+        JButton nextLineButton = new JButton("次の天気を見せるニャ");
+        nextLineButton.setEnabled(false);
+
+        loadButton.addActionListener(_ -> {
+            forecastList = fetchForecastList();
+            forecastIndex = 0;
+            textArea.setText("読み込み完了ニャ！\nボタンを押すと順番に表示するニャ～\n");
+            nextLineButton.setEnabled(true);
         });
 
-        frame.add(refreshButton, BorderLayout.SOUTH);
+        nextLineButton.addActionListener(_ -> {
+            if (forecastIndex < forecastList.size()) {
+                textArea.append(forecastList.get(forecastIndex) + "\n");
+                forecastIndex++;
+            } else {
+                textArea.append("もう全部出したニャ。\n");
+                nextLineButton.setEnabled(false);
+            }
+        });
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(loadButton);
+        buttonPanel.add(nextLineButton);
+
+        frame.add(scrollPane, BorderLayout.CENTER);
+        frame.add(buttonPanel, BorderLayout.SOUTH);
         frame.setVisible(true);
     }
 
-    private static String fetchForecast() {
-        StringBuilder output = new StringBuilder();
+    private static List<String> fetchForecastList() {
+        List<String> result = new ArrayList<>();
         HttpURLConnection connection = null;
 
         try {
@@ -72,23 +94,22 @@ public class WeatherForecastGUI {
                     String weather = weathersArray.getString(i);
                     LocalDateTime dateTime = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME);
                     String formattedDate = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"));
-
-                    output.append(formatCatStyle(formattedDate, weather)).append("\n");
+                    result.add(formatCatStyle(formattedDate, weather));
                 }
 
             } else {
-                output.append("データ取得に失敗しましたニャ…");
+                result.add("データ取得に失敗したニャ…");
             }
 
         } catch (Exception e) {
-            output.append("エラーが発生したニャ: ").append(e.getMessage());
+            result.add("エラーが起きたニャ: " + e.getMessage());
         } finally {
             if (connection != null) {
                 connection.disconnect();
             }
         }
 
-        return output.toString();
+        return result;
     }
 
     private static String formatCatStyle(String date, String weather) {
