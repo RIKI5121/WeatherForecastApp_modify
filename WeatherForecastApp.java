@@ -42,38 +42,58 @@ public class WeatherForecastApp {
                 }
 
                 JSONArray rootArray = new JSONArray(responseBody.toString());
-                JSONObject timeSeriesObj = rootArray.getJSONObject(0)
-                        .getJSONArray("timeSeries").getJSONObject(0);
+                JSONObject report = rootArray.getJSONObject(0); // 最新の天気情報を取得
+                JSONArray timeSeries = report.getJSONArray("timeSeries");
 
+                // 時間ごとのデータを格納するリスト
                 List<String> timeDefines = new ArrayList<>();
                 List<String> weathers = new ArrayList<>();
                 List<String> pops = new ArrayList<>();
                 List<String> temps = new ArrayList<>();
 
-                JSONArray timeDefinesArray = timeSeriesObj.getJSONArray("timeDefines");
-                JSONArray areasArray = timeSeriesObj.getJSONArray("areas");
+                // 1つ目の時系列データ：天気
+                JSONObject weatherData = timeSeries.getJSONObject(0);
+                JSONArray timeDefinesArray = weatherData.getJSONArray("timeDefines");
+                JSONArray areasArray = weatherData.getJSONArray("areas");
+
+                // 各エリアの天気を取得
                 JSONArray weathersArray = areasArray.getJSONObject(0).getJSONArray("weathers");
 
-                // "pops"と"temps"が別の構造になっている場合があるので、適切に確認
-                JSONArray popsArray = areasArray.getJSONObject(0).optJSONArray("pops");
-                JSONArray tempsArray = areasArray.getJSONObject(0).optJSONArray("temps");
+                // 2つ目の時系列データ：降水確率
+                JSONObject popData = timeSeries.getJSONObject(1);
+                JSONArray popsArray = popData.getJSONArray("areas").getJSONObject(0).getJSONArray("pops");
 
+                // 3つ目の時系列データ：気温
+                JSONObject tempData = timeSeries.getJSONObject(2);
+                JSONArray tempsArray = tempData.getJSONArray("areas").getJSONObject(0).getJSONArray("temps");
+
+                // データをリストに追加
                 for (int i = 0; i < timeDefinesArray.length(); i++) {
                     timeDefines.add(timeDefinesArray.getString(i));
                     weathers.add(weathersArray.getString(i));
-                    pops.add(popsArray != null ? popsArray.getString(i) : "N/A"); // popsがnullの場合、N/Aをセット
-                    temps.add(tempsArray != null ? tempsArray.getString(i) : "N/A"); // tempsがnullの場合、N/Aをセット
+                    pops.add(popsArray.getString(i));
+                    temps.add(tempsArray.getString(i));
                 }
 
                 // 今日の日付を取得
                 LocalDateTime today = LocalDateTime.now();
                 String todayDate = today.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
 
-                // 今日と明日の6時、12時、18時、24時の天気を表示
+                // 明日の日付を取得
+                LocalDateTime tomorrow = today.plusDays(1);
+                String tomorrowDate = tomorrow.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+
+                // 今日と明日の6時間ごとの天気を表示
                 int[] targetHours = { 6, 12, 18, 24 }; // 対象の時間
                 for (int hour : targetHours) {
-                    String targetTime = todayDate + " " + (hour < 10 ? "0" + hour : hour) + ":00";
-                    displayWeatherAt(targetTime, timeDefines, weathers, pops, temps);
+                    String targetTimeToday = todayDate + " " + (hour < 10 ? "0" + hour : hour) + ":00";
+                    displayWeatherAt(targetTimeToday, timeDefines, weathers, pops, temps);
+                }
+
+                // 明日の6時間ごとの天気を表示
+                for (int hour : targetHours) {
+                    String targetTimeTomorrow = tomorrowDate + " " + (hour < 10 ? "0" + hour : hour) + ":00";
+                    displayWeatherAt(targetTimeTomorrow, timeDefines, weathers, pops, temps);
                 }
 
             } else {
