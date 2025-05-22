@@ -91,6 +91,7 @@ public class WeatherForecastApp {
         }
     }
 
+
     /**
      * 指定した時刻の天気を表示
      */
@@ -104,10 +105,33 @@ public class WeatherForecastApp {
                 String temp = temps.get(i);
                 System.out.println(formatCatStyle(targetTime, weather, pop, temp));
                 return;
+
+// WeatherForecastAppクラス: メイン処理
+public class WeatherForecastApp {
+    public static void main(String[] args) {
+        WeatherApiClient apiClient = new WeatherApiClient();
+        WeatherDataParser dataParser = new WeatherDataParser();
+
+        try {
+            // 天気データを取る
+            String jsonData = apiClient.fetchWeatherData();
+
+            // 天気データを解析
+            List<String[]> weatherList = dataParser.parseWeatherData(jsonData);
+
+            // 天気データを表示
+            for (String[] weather : weatherList) {
+                LocalDateTime dateTime = LocalDateTime.parse(
+                        weather[0], DateTimeFormatter.ISO_DATE_TIME);
+                String dateStr = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+                String weatherStr = convertToAnimalStyle(weather[1]);
+                System.out.println(dateStr + " " + weatherStr);
+
             }
         }
         System.out.println(targetTime + "  天気データがありませんニャ");
     }
+
 
     /**
      * ネコがしゃべっているような形式に整形する
@@ -131,5 +155,29 @@ public class WeatherForecastApp {
         String spokenWeather = weather.replaceAll("\\s+", "、");
 
         return date + "  大阪のお天気は「" + spokenWeather + "」" + tail + "\n降水確率: " + pop + "  気温: " + temp + "°C";
+
+    public static String convertToAnimalStyle(String weather) {
+        String phrase;
+        String colorCode = "";  // 背景色のコード
+    
+        if (weather.contains("晴")) {
+            phrase = "猫「晴れだにゃ～」"; // 猫
+            colorCode = "\u001B[43m"; // 背景色を黄色に
+        } else if (weather.contains("曇")) {
+            phrase = "牛「曇りモ〜」"; // 牛
+            colorCode = "\u001B[48;5;235m"; // 背景色を灰色に
+
+        } else if (weather.contains("雨")) {
+            phrase = "カエル「雨ゲロゲロ～」"; // カエル
+            colorCode = "\u001B[44m"; // 背景色を青に
+        } else {
+            phrase = weather + "（よくわからない天気だね）";
+            colorCode = "\u001B[47m"; // 背景色を白に
+        }
+    
+        // 色をリセット
+        String resetCode = "\u001B[0m";
+        return colorCode + phrase + resetCode;  // 色付きのテキストを返す
+
     }
 }
