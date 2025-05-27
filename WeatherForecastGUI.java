@@ -220,3 +220,4 @@ public class WeatherForecastGUI {
         return date + " の大阪のお天気は「" + spokenWeather + "」" + tail;
     }
 }
+//
