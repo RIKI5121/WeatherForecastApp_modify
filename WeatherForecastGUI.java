@@ -16,7 +16,6 @@ class BackgroundPanel extends JPanel {
 
     public BackgroundPanel(String imagePath) {
         try {
-            // 画像パスをちゃんと使う
             backgroundImage = new ImageIcon(getClass().getResource(imagePath)).getImage();
         } catch (Exception e) {
             System.err.println("背景画像の読み込みに失敗したニャ: " + e.getMessage());
@@ -40,7 +39,7 @@ public class WeatherForecastGUI {
     private static List<String> forecastList = new ArrayList<>();
     private static int forecastIndex = 0;
 
-    private static JTextPane textPane; // JTextArea → JTextPane に変更
+    private static JTextPane textPane;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(WeatherForecastGUI::createAndShowGUI);
@@ -54,7 +53,7 @@ public class WeatherForecastGUI {
         BackgroundPanel backgroundPanel = new BackgroundPanel("/img/background.png");
 
         textPane = new JTextPane();
-        textPane.setOpaque(false); // 背景透明化
+        textPane.setOpaque(false);
         textPane.setForeground(Color.BLACK);
         textPane.setFont(new Font("Serif", Font.BOLD, 24));
         textPane.setEditable(false);
@@ -77,20 +76,17 @@ public class WeatherForecastGUI {
             forecastList = fetchForecastList();
             forecastIndex = 0;
             textPane.setText("");
-            appendWithHighlight("読み込み完了ニャ！\nボタンを押すと順番に表示するニャ～\n", Color.ORANGE);
+            appendWithHighlight("読み込み完了ニャ！\nボタンを押すと順番に表示するニャ～\n");
             nextLineButton.setEnabled(true);
         });
 
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex < forecastList.size()) {
                 String line = forecastList.get(forecastIndex);
-                Color color = line.contains("データがない") ? Color.GRAY
-                        : line.contains("雨") ? Color.BLUE.darker()
-                                : line.contains("晴") ? Color.ORANGE.darker() : Color.BLACK;
-                appendWithHighlight(line, color);
+                appendWithHighlight(line);
                 forecastIndex++;
             } else {
-                appendWithHighlight("もう全部出したニャ。\n", Color.MAGENTA);
+                appendWithHighlight("もう全部出したニャ。\n");
                 nextLineButton.setEnabled(false);
             }
         });
@@ -107,10 +103,13 @@ public class WeatherForecastGUI {
         frame.setVisible(true);
     }
 
-    private static void appendWithHighlight(String text, Color color) {
+    // 色引数なしで黒色＋黄色背景に固定
+    private static void appendWithHighlight(String text) {
         StyledDocument doc = textPane.getStyledDocument();
-        Style style = textPane.addStyle("Style_" + color.toString(), null);
-        StyleConstants.setForeground(style, color);
+        Style style = textPane.addStyle("BlackTextStyle", null);
+
+        StyleConstants.setForeground(style, Color.BLACK); // 黒文字
+        StyleConstants.setBackground(style, new Color(255, 255, 180)); // 黄色背景（マーカー風）
 
         try {
             doc.insertString(doc.getLength(), text + "\n", style);
@@ -219,5 +218,4 @@ public class WeatherForecastGUI {
         String spokenWeather = weather.replaceAll("\\s+", "、");
         return date + " の大阪のお天気は「" + spokenWeather + "」" + tail;
     }
-}
-//
+} 
