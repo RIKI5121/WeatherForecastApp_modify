@@ -1,9 +1,10 @@
 import javax.swing.*;
+import javax.swing.text.*;
 import java.awt.*;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ArrayList;
@@ -15,8 +16,7 @@ class BackgroundPanel extends JPanel {
 
     public BackgroundPanel(String imagePath) {
         try {
-            backgroundImage = new ImageIcon(getClass().getResource("/img/background.png")).getImage();
-
+            backgroundImage = new ImageIcon(getClass().getResource("/img/" + imagePath)).getImage();
         } catch (Exception e) {
             System.err.println("背景画像の読み込みに失敗したニャ: " + e.getMessage());
         }
@@ -38,6 +38,7 @@ public class WeatherForecastGUI {
 
     private static List<String> forecastList = new ArrayList<>();
     private static int forecastIndex = 0;
+    private static JTextPane textPane;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(WeatherForecastGUI::createAndShowGUI);
@@ -48,14 +49,16 @@ public class WeatherForecastGUI {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(600, 500);
 
-        // 背景画像パネル（画像ファイル名は "background.jpg" など）
-        BackgroundPanel backgroundPanel = new BackgroundPanel("background.jpg");
+        BackgroundPanel backgroundPanel = new BackgroundPanel("background.png");
 
-        JTextArea textArea = new JTextArea();
-        textArea.setOpaque(false); // 背景透明化
-        textArea.setForeground(Color.BLACK); // 文字色
-        textArea.setFont(new Font("Serif", Font.BOLD, 24));
-        JScrollPane scrollPane = new JScrollPane(textArea);
+        textPane = new JTextPane();
+        textPane.setOpaque(false);
+        textPane.setEditable(false);
+        textPane.setForeground(Color.BLACK);
+        textPane.setFont(new Font("SansSerif", Font.BOLD, 24));
+        textPane.setBackground(new Color(0, 0, 0, 0)); // 透明
+
+        JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
 
@@ -66,22 +69,23 @@ public class WeatherForecastGUI {
         loadButton.addActionListener(_ -> {
             forecastList = fetchForecastList();
             forecastIndex = 0;
-            textArea.setText("読み込み完了ニャ！\nボタンを押すと順番に表示するニャ～\n");
+            textPane.setText("");
+            appendWithHighlight("読み込み完了ニャ！\nボタンを押すと順番に表示するニャ～\n");
             nextLineButton.setEnabled(true);
         });
 
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex < forecastList.size()) {
-                textArea.append(forecastList.get(forecastIndex) + "\n");
+                appendWithHighlight(forecastList.get(forecastIndex));
                 forecastIndex++;
             } else {
-                textArea.append("もう全部出したニャ。\n");
+                appendWithHighlight("もう全部出したニャ。\n");
                 nextLineButton.setEnabled(false);
             }
         });
 
         JPanel buttonPanel = new JPanel();
-        buttonPanel.setOpaque(false); // 背景透明化
+        buttonPanel.setOpaque(false);
         buttonPanel.add(loadButton);
         buttonPanel.add(nextLineButton);
 
@@ -90,7 +94,19 @@ public class WeatherForecastGUI {
 
         frame.setContentPane(backgroundPanel);
         frame.setVisible(true);
-    }    
+    }
+
+    private static void appendWithHighlight(String text) {
+        StyledDocument doc = textPane.getStyledDocument();
+        Style style = textPane.addStyle("HighlightStyle", null);
+        StyleConstants.setBackground(style, new Color(255, 255, 150)); // 薄黄色マーカー
+
+        try {
+            doc.insertString(doc.getLength(), text + "\n", style);
+        } catch (BadLocationException e) {
+            e.printStackTrace();
+        }
+    }
 
     private static List<String> fetchForecastList() {
         List<String> result = new ArrayList<>();
@@ -123,8 +139,8 @@ public class WeatherForecastGUI {
 
                 for (int i = 0; i < timeDefinesArray.length(); i++) {
                     String dateStr = timeDefinesArray.getString(i);
-                    String weather = weathersArray.getString(i);
-                    LocalDateTime dateTime = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME);
+                    String weather = (i < weathersArray.length()) ? weathersArray.getString(i) : "情報なしニャ";
+                    OffsetDateTime dateTime = OffsetDateTime.parse(dateStr);
                     String formattedDate = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"));
                     result.add(formatCatStyle(formattedDate, weather));
                 }
