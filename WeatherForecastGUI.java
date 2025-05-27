@@ -9,6 +9,29 @@ import java.util.List;
 import java.util.ArrayList;
 import org.json.*;
 
+// 背景画像付きパネルクラス
+class BackgroundPanel extends JPanel {
+    private Image backgroundImage;
+
+    public BackgroundPanel(String imagePath) {
+        try {
+            backgroundImage = new ImageIcon(getClass().getResource("/img/background.png")).getImage();
+
+        } catch (Exception e) {
+            System.err.println("背景画像の読み込みに失敗したニャ: " + e.getMessage());
+        }
+        setLayout(new BorderLayout());
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (backgroundImage != null) {
+            g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+        }
+    }
+}
+
 public class WeatherForecastGUI {
 
     private static final String TARGET_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/270000.json";
@@ -25,10 +48,16 @@ public class WeatherForecastGUI {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(600, 500);
 
+        // 背景画像パネル（画像ファイル名は "background.jpg" など）
+        BackgroundPanel backgroundPanel = new BackgroundPanel("background.jpg");
+
         JTextArea textArea = new JTextArea();
-        textArea.setEditable(false);
+        textArea.setOpaque(false); // 背景透明化
+        textArea.setForeground(Color.BLACK); // 文字色
         textArea.setFont(new Font("Serif", Font.PLAIN, 16));
         JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
 
         JButton loadButton = new JButton("お天気を読み込むニャ");
         JButton nextLineButton = new JButton("次の天気を見せるニャ");
@@ -52,13 +81,16 @@ public class WeatherForecastGUI {
         });
 
         JPanel buttonPanel = new JPanel();
+        buttonPanel.setOpaque(false); // 背景透明化
         buttonPanel.add(loadButton);
         buttonPanel.add(nextLineButton);
 
-        frame.add(scrollPane, BorderLayout.CENTER);
-        frame.add(buttonPanel, BorderLayout.SOUTH);
+        backgroundPanel.add(scrollPane, BorderLayout.CENTER);
+        backgroundPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        frame.setContentPane(backgroundPanel);
         frame.setVisible(true);
-    }
+    }    
 
     private static List<String> fetchForecastList() {
         List<String> result = new ArrayList<>();
