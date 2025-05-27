@@ -54,7 +54,7 @@ public class WeatherForecastGUI {
         JTextArea textArea = new JTextArea();
         textArea.setOpaque(false); // 背景透明化
         textArea.setForeground(Color.BLACK); // 文字色
-        textArea.setFont(new Font("Serif", Font.PLAIN, 16));
+        textArea.setFont(new Font("Serif", Font.BOLD, 24));
         JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
