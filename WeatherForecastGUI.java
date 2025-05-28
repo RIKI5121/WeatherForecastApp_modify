@@ -38,7 +38,6 @@ class BackgroundPanel extends JPanel {
 
 public class WeatherForecastGUI {
 
-    // 地域ごとの気象庁コード（https://www.jma.go.jp/bosai/common/const/area.json 等から抜粋）
     private static final Map<String, String> REGION_CODES = Map.of(
             "北海道", "010000",
             "宮城", "040000",
@@ -47,7 +46,7 @@ public class WeatherForecastGUI {
             "大阪", "270000",
             "広島", "340000");
 
-    private static String currentRegion = "大阪"; // デフォルト地域
+    private static String currentRegion = "大阪";
     private static List<String> forecastList = new ArrayList<>();
     private static int forecastIndex = 0;
 
@@ -67,7 +66,6 @@ public class WeatherForecastGUI {
 
         BackgroundPanel backgroundPanel = new BackgroundPanel("/img/background.png");
 
-        // 地域選択コンボボックス
         regionComboBox = new JComboBox<>(REGION_CODES.keySet().toArray(new String[0]));
         regionComboBox.setSelectedItem(currentRegion);
         regionComboBox.setFont(new Font("Meiryo", Font.BOLD, 24));
@@ -79,8 +77,6 @@ public class WeatherForecastGUI {
         Font buttonFont = new Font("Meiryo", Font.BOLD, 30);
         loadButton.setFont(buttonFont);
         nextLineButton.setFont(buttonFont);
-        loadButton.setMargin(new Insets(10, 20, 10, 20));
-        nextLineButton.setMargin(new Insets(10, 20, 10, 20));
 
         textPane = new JTextPane();
         textPane.setOpaque(false);
@@ -92,7 +88,6 @@ public class WeatherForecastGUI {
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
 
-        // ボタンパネル（地域選択 + 読込ボタン + 次へボタン）
         JPanel topPanel = new JPanel();
         topPanel.setOpaque(false);
         topPanel.add(new JLabel("地域選択:"));
@@ -100,7 +95,7 @@ public class WeatherForecastGUI {
         topPanel.add(loadButton);
         topPanel.add(nextLineButton);
 
-        loadButton.addActionListener(e -> {
+        loadButton.addActionListener(_ -> {
             currentRegion = (String) regionComboBox.getSelectedItem();
             forecastList = fetchForecastList(currentRegion);
             forecastIndex = 0;
@@ -109,7 +104,7 @@ public class WeatherForecastGUI {
             nextLineButton.setEnabled(true);
         });
 
-        nextLineButton.addActionListener(e -> {
+        nextLineButton.addActionListener(_ -> {
             if (forecastIndex < forecastList.size()) {
                 String line = forecastList.get(forecastIndex);
                 appendWithHighlight(line);
@@ -141,7 +136,6 @@ public class WeatherForecastGUI {
         }
     }
 
-    // 地域を指定して天気情報を取得
     private static List<String> fetchForecastList(String region) {
         List<String> result = new ArrayList<>();
         HttpURLConnection connection = null;
@@ -157,14 +151,6 @@ public class WeatherForecastGUI {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime today = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime tomorrow = today.plusDays(1);
-
-        int[] targetHours = { 0, 6, 12, 18 };
-        List<LocalDateTime> targetTimes = new ArrayList<>();
-
-        for (int h : targetHours)
-            targetTimes.add(today.withHour(h));
-        for (int h : targetHours)
-            targetTimes.add(tomorrow.withHour(h));
 
         try {
             URI uri = new URI(targetUrl);
@@ -184,35 +170,88 @@ public class WeatherForecastGUI {
                 }
 
                 JSONArray rootArray = new JSONArray(responseBody.toString());
-                JSONObject timeSeriesObj = rootArray.getJSONObject(0)
-                        .getJSONArray("timeSeries").getJSONObject(0);
-
-                JSONArray timeDefinesArray = timeSeriesObj.getJSONArray("timeDefines");
-                JSONArray areasArray = timeSeriesObj.getJSONArray("areas");
-                JSONArray weathersArray = areasArray.getJSONObject(0).getJSONArray("weathers");
 
                 Map<LocalDateTime, String> weatherMap = new HashMap<>();
-                for (int i = 0; i < timeDefinesArray.length(); i++) {
-                    LocalDateTime dt = LocalDateTime.parse(timeDefinesArray.getString(i),
+                JSONArray timeSeriesArray = rootArray.getJSONObject(0).getJSONArray("timeSeries");
+
+                JSONObject weatherSeries = timeSeriesArray.getJSONObject(0);
+                JSONArray weatherTimeDefines = weatherSeries.getJSONArray("timeDefines");
+                JSONArray weatherAreas = weatherSeries.getJSONArray("areas");
+                JSONArray weathersArray = weatherAreas.getJSONObject(0).getJSONArray("weathers");
+
+                for (int i = 0; i < weatherTimeDefines.length() && i < weathersArray.length(); i++) {
+                    LocalDateTime dt = LocalDateTime.parse(weatherTimeDefines.getString(i),
                             DateTimeFormatter.ISO_DATE_TIME);
-                    if (i < weathersArray.length()) {
-                        weatherMap.put(dt, weathersArray.getString(i));
+                    weatherMap.put(dt, weathersArray.getString(i));
+                }
+
+                Map<LocalDateTime, String> tempMap = new HashMap<>();
+                for (int tsIndex = 0; tsIndex < timeSeriesArray.length(); tsIndex++) {
+                    JSONObject tsObj = timeSeriesArray.getJSONObject(tsIndex);
+                    JSONArray timeDefines = tsObj.getJSONArray("timeDefines");
+                    JSONArray areas = tsObj.getJSONArray("areas");
+
+                    if (areas.length() == 0 || !areas.getJSONObject(0).has("temps"))
+                        continue;
+
+                    JSONArray temps = areas.getJSONObject(0).getJSONArray("temps");
+
+                    for (int i = 0; i < timeDefines.length() && i < temps.length(); i++) {
+                        String tempStr = temps.getString(i);
+                        if (tempStr == null || tempStr.isEmpty())
+                            continue;
+
+                        LocalDateTime dt = LocalDateTime.parse(timeDefines.getString(i),
+                                DateTimeFormatter.ISO_DATE_TIME);
+                        tempMap.put(dt, tempStr);
                     }
                 }
 
+                // 結果表示のヘッダー
                 result.add("=== " + today.format(DateTimeFormatter.ofPattern("M月d日")) + "・" +
-                        tomorrow.format(DateTimeFormatter.ofPattern("d日")) + "の" + region + "の天気（6時間ごと）ニャ ===");
+                        tomorrow.format(DateTimeFormatter.ofPattern("d日")) + "の" + region + "の天気と気温ニャ ===");
 
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("M/d H時");
+                // 各日付ごとの天気を取り出して1日単位で表示
+                LocalDateTime[] days = { today, tomorrow };
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("M/d");
 
-                for (LocalDateTime targetTime : targetTimes) {
-                    String dateStr = targetTime.format(fmt);
-                    String weather = weatherMap.get(targetTime);
-                    if (weather == null || weather.isEmpty()) {
-                        result.add(dateStr + " の" + region + "のお天気はデータがないニャ…");
-                    } else {
-                        result.add(formatCatStyle(dateStr, weather, region));
+                for (LocalDateTime day : days) {
+                    String dateStr = day.format(fmt);
+                    String weather = null;
+                    String tempHigh = null;
+                    String tempLow = null;
+
+                    // 最初の timeSeries から天気予報を取得（テキストベース）
+                    if (!weatherMap.isEmpty()) {
+                        for (Map.Entry<LocalDateTime, String> entry : weatherMap.entrySet()) {
+                            if (entry.getKey().toLocalDate().equals(day.toLocalDate())) {
+                                weather = entry.getValue();
+                                break; // 最初の一致だけ表示
+                            }
+                        }
                     }
+
+                    // tempMap から気温（複数あれば最高/最低を抽出）
+                    List<Integer> temps = new ArrayList<>();
+                    for (Map.Entry<LocalDateTime, String> entry : tempMap.entrySet()) {
+                        if (entry.getKey().toLocalDate().equals(day.toLocalDate())) {
+                            try {
+                                temps.add(Integer.parseInt(entry.getValue()));
+                            } catch (NumberFormatException ignored) {
+                            }
+                        }
+                    }
+                    if (!temps.isEmpty()) {
+                        tempHigh = String.valueOf(temps.stream().max(Integer::compare).orElse(0));
+                        tempLow = String.valueOf(temps.stream().min(Integer::compare).orElse(0));
+                    }
+
+                    String line = dateStr + " の " + region + " のお天気は「" + (weather != null ? weather : "不明") + "」ニャ。";
+                    if (tempHigh != null && tempLow != null) {
+                        line += " 最高気温 " + tempHigh + "℃、最低気温 " + tempLow + "℃ ニャ～";
+                    }
+
+                    result.add(line);
                 }
 
             } else {
@@ -231,6 +270,9 @@ public class WeatherForecastGUI {
     }
 
     private static String formatCatStyle(String date, String weather, String region) {
+        if (weather == null)
+            weather = "不明";
+
         String tail;
 
         if (weather.contains("雨")) {
