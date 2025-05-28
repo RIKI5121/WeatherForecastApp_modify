@@ -246,7 +246,8 @@ public class WeatherForecastGUI {
                         tempLow = String.valueOf(temps.stream().min(Integer::compare).orElse(0));
                     }
 
-                    String line = dateStr + " の " + region + " のお天気は「" + (weather != null ? weather : "不明") + "」ニャ。";
+                    // 猫語風の天気表現で表示
+                    String line = formatCatStyle(dateStr, weather, region);
                     if (tempHigh != null && tempLow != null) {
                         line += " 最高気温 " + tempHigh + "℃、最低気温 " + tempLow + "℃ ニャ～";
                     }
@@ -269,6 +270,7 @@ public class WeatherForecastGUI {
         return result;
     }
 
+    // 猫語風の天気表現メソッド（ここで使う）
     private static String formatCatStyle(String date, String weather, String region) {
         if (weather == null)
             weather = "不明";
