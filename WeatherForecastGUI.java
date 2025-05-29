@@ -7,29 +7,6 @@ import java.util.*;
 import java.util.List;
 import org.json.*;
 
-class BackgroundPanel extends JPanel {
-    private Image backgroundImage;
-
-    public BackgroundPanel(String imagePath) {
-        try {
-            if (imagePath != null) {
-                backgroundImage = new ImageIcon(getClass().getResource(imagePath)).getImage();
-            }
-        } catch (Exception e) {
-            System.err.println("背景画像の読み込みに失敗したニャ: " + e.getMessage());
-        }
-        setLayout(new BorderLayout());
-    }
-
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        if (backgroundImage != null) {
-            g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
-        }
-    }
-}
-
 public class WeatherForecastGUI {
     private static final Map<String, String> REGION_CODES = Map.ofEntries(
             Map.entry("北海道", "016000"), Map.entry("青森県", "020000"), Map.entry("岩手県", "030000"),
@@ -65,7 +42,8 @@ public class WeatherForecastGUI {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(1600, 1000);
 
-        BackgroundPanel backgroundPanel = new BackgroundPanel("/img/background.png");
+        JPanel backgroundPanel = new JPanel();
+        backgroundPanel.setLayout(new BorderLayout());
 
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setOpaque(false);
