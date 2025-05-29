@@ -68,9 +68,15 @@ public class WeatherForecastGUI {
         inputPanel.setOpaque(false);
         JTextField regionInput = new JTextField(20);
         regionInput.setFont(new Font("Meiryo", Font.PLAIN, 20));
+
+
+        // 地域を打った後、エンターキーで切り替えれる
+        regionInput.addActionListener(_ -> {
+
         JButton showInputButton = new JButton("この地域を表示");
         showInputButton.setFont(new Font("Meiryo", Font.BOLD, 28));
         showInputButton.addActionListener(_ -> {
+
             String inputRegion = regionInput.getText().trim();
             if (REGION_CODES.containsKey(inputRegion)) {
                 currentRegion = inputRegion;
@@ -86,7 +92,6 @@ public class WeatherForecastGUI {
 
         inputPanel.add(new JLabel("地域入力:"));
         inputPanel.add(regionInput);
-        inputPanel.add(showInputButton);
 
         controlPanel.add(inputPanel);
         controlPanel.add(nextLineButton);
