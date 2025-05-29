@@ -58,16 +58,16 @@ public class WeatherForecastApp {
                     LocalDateTime dateTime = LocalDateTime.parse(timeDefines.get(i), DateTimeFormatter.ISO_DATE_TIME);
                     String formattedDate = dateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm"));
                     String weather = weathers.get(i);
-                    System.out.println(formatCatStyle(formattedDate, weather));
+                    System.out.println(formatWeatherText(formattedDate, weather));
                 }
 
             } else {
-                System.out.println("データ取得に失敗しましたニャ…");
+                System.out.println("データの取得に失敗しました。");
             }
         } catch (URISyntaxException e) {
-            System.out.println("URIの構文が無効ですニャ: " + e.getMessage());
+            System.out.println("URIの構文が無効です: " + e.getMessage());
         } catch (IOException e) {
-            System.out.println("通信エラーが発生したニャ: ");
+            System.out.println("通信エラーが発生しました。");
             e.printStackTrace();
         } finally {
             if (connection != null) {
@@ -76,24 +76,9 @@ public class WeatherForecastApp {
         }
     }
 
-    // ネコっぽい話し方に変換
-    private static String formatCatStyle(String date, String weather) {
-        String tail;
-
-        if (weather.contains("雨")) {
-            tail = "っぽいニャ～";
-        } else if (weather.contains("くもり") && weather.contains("晴")) {
-            tail = "になりそうニャ";
-        } else if (weather.contains("晴")) {
-            tail = "みたいニャ～";
-        } else if (weather.contains("くもり")) {
-            tail = "かもニャ";
-        } else {
-            tail = "ニャ";
-        }
-
+    // 通常の天気情報表示文
+    private static String formatWeatherText(String date, String weather) {
         String spokenWeather = weather.replaceAll("\\s+", "、");
-
-        return date + " の大阪のお天気は「" + spokenWeather + "」" + tail;
+        return date + " の大阪の天気は「" + spokenWeather + "」です。";
     }
 }
