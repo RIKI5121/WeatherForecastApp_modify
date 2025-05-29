@@ -36,22 +36,22 @@ class BackgroundPanel extends JPanel {
 public class WeatherForecastInputGUI {
 
     private static final Map<String, String> REGION_CODES = Map.ofEntries(
-            Map.entry("北海道", "016000"), Map.entry("青森", "020000"), Map.entry("岩手", "030000"),
-            Map.entry("宮城", "040000"), Map.entry("秋田", "050000"), Map.entry("山形", "060000"),
-            Map.entry("福島", "070000"), Map.entry("茨城", "080000"), Map.entry("栃木", "090000"),
-            Map.entry("群馬", "100000"), Map.entry("埼玉", "110000"), Map.entry("千葉", "120000"),
-            Map.entry("東京", "130000"), Map.entry("神奈川", "140000"), Map.entry("新潟", "150000"),
-            Map.entry("富山", "160000"), Map.entry("石川", "170000"), Map.entry("福井", "180000"),
-            Map.entry("山梨", "190000"), Map.entry("長野", "200000"), Map.entry("岐阜", "210000"),
-            Map.entry("静岡", "220000"), Map.entry("愛知", "230000"), Map.entry("三重", "240000"),
-            Map.entry("滋賀", "250000"), Map.entry("京都", "260000"), Map.entry("大阪", "270000"),
-            Map.entry("兵庫", "280000"), Map.entry("奈良", "290000"), Map.entry("和歌山", "300000"),
-            Map.entry("鳥取", "310000"), Map.entry("島根", "320000"), Map.entry("岡山", "330000"),
-            Map.entry("広島", "340000"), Map.entry("山口", "350000"), Map.entry("徳島", "360000"),
-            Map.entry("香川", "370000"), Map.entry("愛媛", "380000"), Map.entry("高知", "390000"),
-            Map.entry("福岡", "400000"), Map.entry("佐賀", "410000"), Map.entry("長崎", "420000"),
-            Map.entry("熊本", "430000"), Map.entry("大分", "440000"), Map.entry("宮崎", "450000"),
-            Map.entry("鹿児島", "460100"), Map.entry("沖縄", "471000"));
+        Map.entry("北海道", "016000"), Map.entry("青森県", "020000"), Map.entry("岩手県", "030000"),
+        Map.entry("宮城県", "040000"), Map.entry("秋田県", "050000"), Map.entry("山形県", "060000"),
+        Map.entry("福島県", "070000"), Map.entry("茨城県", "080000"), Map.entry("栃木県", "090000"),
+        Map.entry("群馬県", "100000"), Map.entry("埼玉県", "110000"), Map.entry("千葉県", "120000"),
+        Map.entry("東京都", "130000"), Map.entry("神奈川県", "140000"), Map.entry("新潟県", "150000"),
+        Map.entry("富山県", "160000"), Map.entry("石川県", "170000"), Map.entry("福井県", "180000"),
+        Map.entry("山梨県", "190000"), Map.entry("長野県", "200000"), Map.entry("岐阜県", "210000"),
+        Map.entry("静岡県", "220000"), Map.entry("愛知県", "230000"), Map.entry("三重県", "240000"),
+        Map.entry("滋賀県", "250000"), Map.entry("京都府", "260000"), Map.entry("大阪府", "270000"),
+        Map.entry("兵庫県", "280000"), Map.entry("奈良県", "290000"), Map.entry("和歌山県", "300000"),
+        Map.entry("鳥取県", "310000"), Map.entry("島根県", "320000"), Map.entry("岡山県", "330000"),
+        Map.entry("広島県", "340000"), Map.entry("山口県", "350000"), Map.entry("徳島県", "360000"),
+        Map.entry("香川県", "370000"), Map.entry("愛媛県", "380000"), Map.entry("高知県", "390000"),
+        Map.entry("福岡県", "400000"), Map.entry("佐賀県", "410000"), Map.entry("長崎県", "420000"),
+        Map.entry("熊本県", "430000"), Map.entry("大分県", "440000"), Map.entry("宮崎県", "450000"),
+        Map.entry("鹿児島県", "460100"), Map.entry("沖縄県", "471000"));        
 
     private static String currentRegion = "大阪";
     private static List<String> forecastList = new ArrayList<>();
