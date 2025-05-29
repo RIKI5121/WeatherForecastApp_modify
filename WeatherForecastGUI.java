@@ -38,7 +38,7 @@ public class WeatherForecastGUI {
     }
 
     private static void createAndShowGUI() {
-        JFrame frame = new JFrame("お天気ネコちゃん");
+        JFrame frame = new JFrame("天気予報アプリ");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(1600, 1000);
 
@@ -51,7 +51,7 @@ public class WeatherForecastGUI {
         JPanel controlPanel = new JPanel();
         controlPanel.setOpaque(false);
 
-        nextLineButton = new JButton("決定ニャ");
+        nextLineButton = new JButton("表示");
         nextLineButton.setFont(new Font("Meiryo", Font.BOLD, 28));
         nextLineButton.setEnabled(false);
         nextLineButton.addActionListener(_ -> {
@@ -59,16 +59,16 @@ public class WeatherForecastGUI {
                 appendWithHighlight(forecastList.get(forecastIndex));
                 forecastIndex++;
             } else {
-                appendWithHighlight("もう全部出したニャ。\n");
+                appendWithHighlight("すべて表示しました。\n");
                 nextLineButton.setEnabled(false);
             }
         });
 
         JPanel inputPanel = new JPanel();
         inputPanel.setOpaque(false);
-        JTextField regionInput = new JTextField(20); // ← 検索欄を広く
+        JTextField regionInput = new JTextField(20);
         regionInput.setFont(new Font("Meiryo", Font.PLAIN, 20));
-        JButton showInputButton = new JButton("この地域を表示ニャ");
+        JButton showInputButton = new JButton("この地域を表示");
         showInputButton.setFont(new Font("Meiryo", Font.BOLD, 28));
         showInputButton.addActionListener(_ -> {
             String inputRegion = regionInput.getText().trim();
@@ -77,10 +77,10 @@ public class WeatherForecastGUI {
                 forecastList = fetchForecastList(currentRegion);
                 forecastIndex = 0;
                 textPane.setText("");
-                appendWithHighlight("「" + currentRegion + "」の天気情報を読み込んだニャ！\n順番に表示するニャ～\n");
+                appendWithHighlight("「" + currentRegion + "」の天気情報を読み込みました。\n順番に表示します。\n");
                 nextLineButton.setEnabled(true);
             } else {
-                appendWithHighlight("「" + inputRegion + "」は知らニャい地域ニャ…正しい都道府県名を入力してニャ！");
+                appendWithHighlight("「" + inputRegion + "」は知らない地域です。正しい都道府県名を入力してください。");
             }
         });
 
@@ -112,7 +112,7 @@ public class WeatherForecastGUI {
 
     private static void appendWithHighlight(String text) {
         StyledDocument doc = textPane.getStyledDocument();
-        Style style = textPane.addStyle("CatStyle", null);
+        Style style = textPane.addStyle("NormalStyle", null);
         StyleConstants.setForeground(style, new Color(30, 30, 30));
         StyleConstants.setFontSize(style, 24);
         StyleConstants.setBold(style, true);
@@ -146,28 +146,13 @@ public class WeatherForecastGUI {
 
             for (String line : text.split("\n")) {
                 if (!line.isBlank()) {
-                    result.add(formatCatStyle(line));
+                    result.add(line);
                 }
             }
 
         } catch (IOException | JSONException e) {
-            result.add("天気情報の取得に失敗したニャ: " + e.getMessage());
+            result.add("天気情報の取得に失敗しました: " + e.getMessage());
         }
         return result;
-    }
-
-    private static String formatCatStyle(String input) {
-        return input
-                .replaceAll("です", "だニャ")
-                .replaceAll("ます", "まス")
-                .replaceAll("。", "ニャ。")
-                .replaceAll("でしょう", "かもしれニャい")
-                .replaceAll("ください", "してほしいニャ")
-                .replaceAll("あります", "あるニャ")
-                .replaceAll("予想", "にゃん予想")
-                .replaceAll("影響", "影響ニャ")
-                .replaceAll("可能性", "にゃん可能性")
-                .replaceAll("おそれ", "おそれニャ")
-                .replaceAll("見込み", "見込みニャ") + "～";
     }
 }
