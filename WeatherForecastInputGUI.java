@@ -96,7 +96,7 @@ public class WeatherForecastInputGUI {
         JTextField regionInput = new JTextField(10);
         regionInput.setFont(new Font("Meiryo", Font.PLAIN, 20));
         JButton showInputButton = new JButton("この地域を表示ニャ");
-        showInputButton.setFont(new Font("Meiryo", Font.BOLD, 20));
+        showInputButton.setFont(new Font("Meiryo", Font.BOLD, 28));
 
         showInputButton.addActionListener(_ -> {
             String inputRegion = regionInput.getText().trim();
