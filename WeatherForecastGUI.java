@@ -69,30 +69,28 @@ public class WeatherForecastGUI {
         JTextField regionInput = new JTextField(20);
         regionInput.setFont(new Font("Meiryo", Font.PLAIN, 20));
 
-
-        // 地域を打った後、エンターキーで切り替えれる
-        regionInput.addActionListener(_ -> {
-
         JButton showInputButton = new JButton("この地域を表示");
         showInputButton.setFont(new Font("Meiryo", Font.BOLD, 28));
         showInputButton.addActionListener(_ -> {
-
             String inputRegion = regionInput.getText().trim();
             if (REGION_CODES.containsKey(inputRegion)) {
                 currentRegion = inputRegion;
-                // ここで詳細天気＋気温の情報を取得
                 forecastList = fetchDetailedForecast(currentRegion);
                 forecastIndex = 0;
                 textPane.setText("");
                 appendWithHighlight("「" + currentRegion + "」の天気情報を読み込みました。\n順番に表示します。\n");
                 nextLineButton.setEnabled(true);
             } else {
-                appendWithHighlight("「" + inputRegion + "」は知らない地域です。正しい都道府県名を入力してください。");
+                appendWithHighlight("「" + inputRegion + "」は知らない地域です。正しい都道府県名を入力してください。\n");
             }
         });
 
+        // エンターキーで表示ボタンを押したのと同じ動作
+        regionInput.addActionListener(_ -> showInputButton.doClick());
+
         inputPanel.add(new JLabel("地域入力:"));
         inputPanel.add(regionInput);
+        inputPanel.add(showInputButton); // ← これを追加しないとボタンが表示されない！
 
         controlPanel.add(inputPanel);
         controlPanel.add(nextLineButton);
@@ -130,9 +128,6 @@ public class WeatherForecastGUI {
         }
     }
 
-    /**
-     * 指定地域の「今日・明日の天気」と「今日の最低最高気温」を取得してリストで返す
-     */
     private static List<String> fetchDetailedForecast(String region) {
         List<String> result = new ArrayList<>();
         try {
@@ -156,12 +151,11 @@ public class WeatherForecastGUI {
             }
 
             JSONArray rootArray = new JSONArray(jsonText.toString());
-            if (rootArray.length() < 2) {
+            if (rootArray.length() < 1) {
                 result.add("APIのレスポンスデータが不足しています。");
                 return result;
             }
 
-            // 天気情報 (今日・明日分)
             JSONObject weatherRoot = rootArray.getJSONObject(0);
             JSONArray weatherTimeSeries = weatherRoot.getJSONArray("timeSeries");
             JSONObject weatherPart = weatherTimeSeries.getJSONObject(0);
@@ -171,51 +165,18 @@ public class WeatherForecastGUI {
             JSONObject weatherArea = weatherAreas.getJSONObject(0);
             List<String> weathers = getStringList(weatherArea.getJSONArray("weathers"));
 
-            int maxWeatherCount = Math.min(2, Math.min(weatherTimes.size(), weathers.size()));
+            int maxWeatherCount = Math.min(3, Math.min(weatherTimes.size(), weathers.size()));
             for (int i = 0; i < maxWeatherCount; i++) {
-                result.add("【天気】" + weatherTimes.get(i) + ": " + weathers.get(i));
-            }
-
-            // 気温情報（今日の最低最高気温）
-            JSONObject tempRoot = rootArray.getJSONObject(1);
-            JSONArray tempTimeSeries = tempRoot.getJSONArray("timeSeries");
-
-            if (tempTimeSeries.length() < 2) {
-                result.add("気温情報が不足しています。");
-                return result;
-            }
-
-            JSONObject tempPart = tempTimeSeries.getJSONObject(1); // tempsMax, tempsMinがあるtimeSeries
-            List<String> tempTimes = getStringList(tempPart.getJSONArray("timeDefines"));
-            JSONObject tempArea = tempPart.getJSONArray("areas").getJSONObject(0);
-
-            List<String> maxTemps = getStringList(tempArea.getJSONArray("tempsMax"));
-            List<String> minTemps = getStringList(tempArea.getJSONArray("tempsMin"));
-
-            // 有効な気温情報の最初のindexを探す（空文字列を無視）
-            int index = 0;
-            for (int i = 0; i < maxTemps.size(); i++) {
-                if (!maxTemps.get(i).isEmpty() && !minTemps.get(i).isEmpty()) {
-                    index = i;
-                    break;
-                }
-            }
-
-            if (maxTemps.size() > index && minTemps.size() > index
-                    && !maxTemps.get(index).isEmpty() && !minTemps.get(index).isEmpty()) {
-                result.add("【気温】" + tempTimes.get(index) + " 最低: " + minTemps.get(index) + "℃ / 最高: "
-                        + maxTemps.get(index) + "℃");
-            } else {
-                result.add("気温情報がありません。");
+                String date = weatherTimes.get(i).substring(0, 10);
+                result.add("【天気】" + date + ": " + weathers.get(i));
             }
 
         } catch (IOException | JSONException e) {
             result.add("詳細天気情報の取得に失敗しました: " + e.getMessage());
         }
         return result;
-    }
+    }    
 
-    // JSONArrayをStringのListに変換するユーティリティ
     private static List<String> getStringList(JSONArray jsonArray) throws JSONException {
         List<String> list = new ArrayList<>();
         for (int i = 0; i < jsonArray.length(); i++) {
