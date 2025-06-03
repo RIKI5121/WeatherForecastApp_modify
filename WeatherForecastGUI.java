@@ -26,13 +26,6 @@ public class WeatherForecastGUI {
             Map.entry("熊本県", "430000"), Map.entry("大分県", "440000"), Map.entry("宮崎県", "450000"),
             Map.entry("鹿児島県", "460100"), Map.entry("沖縄県", "471000"));
 
-    private static String currentRegion = "大阪府";
-    private static List<String> forecastList = new ArrayList<>();
-    private static int forecastIndex = 0;
-
-    private static JTextPane textPane;
-    private static JButton nextLineButton;
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(WeatherForecastGUI::createAndShowGUI);
     }
@@ -40,93 +33,103 @@ public class WeatherForecastGUI {
     private static void createAndShowGUI() {
         JFrame frame = new JFrame("天気予報アプリ");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(1600, 1000);
+        frame.setSize(900, 600);
+        frame.setLocationRelativeTo(null); // 画面中央に表示
 
-        JPanel backgroundPanel = new JPanel();
-        backgroundPanel.setLayout(new BorderLayout());
+        JPanel mainPanel = new JPanel(new BorderLayout(15, 15));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        mainPanel.setBackground(new Color(245, 245, 245)); // 明るいグレー背景
 
-        JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setOpaque(false);
+        // 入力エリアパネル（上部）
+        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        inputPanel.setBackground(new Color(230, 230, 250)); // 薄いラベンダー色
+        inputPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.GRAY), "地域入力"));
 
-        JPanel controlPanel = new JPanel();
-        controlPanel.setOpaque(false);
+        JTextField regionInput = new JTextField(15);
+        regionInput.setFont(new Font("Meiryo", Font.PLAIN, 18));
+        inputPanel.add(new JLabel("都道府県:"));
+        inputPanel.add(regionInput);
 
-        nextLineButton = new JButton("表示");
-        nextLineButton.setFont(new Font("Meiryo", Font.BOLD, 28));
+        JButton showInputButton = new JButton("表示");
+        showInputButton.setFont(new Font("Meiryo", Font.BOLD, 18));
+        inputPanel.add(showInputButton);
+
+        JButton nextLineButton = new JButton("次の天気を表示");
+        nextLineButton.setFont(new Font("Meiryo", Font.BOLD, 18));
         nextLineButton.setEnabled(false);
-        nextLineButton.addActionListener(_ -> {
-            if (forecastIndex < forecastList.size()) {
-                appendWithHighlight(forecastList.get(forecastIndex));
-                forecastIndex++;
+        inputPanel.add(nextLineButton);
+
+        mainPanel.add(inputPanel, BorderLayout.NORTH);
+
+        // テキスト表示エリア
+        JTextPane textPane = new JTextPane();
+        textPane.setEditable(false);
+        textPane.setFont(new Font("Meiryo", Font.PLAIN, 20));
+        textPane.setBackground(Color.WHITE);
+        textPane.setMargin(new Insets(10, 10, 10, 10));
+
+        JScrollPane scrollPane = new JScrollPane(textPane);
+        scrollPane.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.GRAY), "天気予報"));
+
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+        frame.setContentPane(mainPanel);
+        frame.setVisible(true);
+
+        // ボタンの動作（例）
+        List<String> forecastList = new ArrayList<>();
+        final int[] forecastIndex = { 0 };
+
+        showInputButton.addActionListener(_ -> {
+            String inputRegion = regionInput.getText().trim();
+            if (!REGION_CODES.containsKey(inputRegion)) {
+                JOptionPane.showMessageDialog(frame, "正しい都道府県名を入力してください。", "入力エラー", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            forecastList.clear();
+            forecastList.addAll(fetchDetailedForecast(inputRegion));
+            forecastIndex[0] = 0;
+            textPane.setText("");
+            if (forecastList.isEmpty()) {
+                textPane.setText("天気情報が取得できませんでした。");
+                nextLineButton.setEnabled(false);
             } else {
-                appendWithHighlight("すべて表示しました。\n");
+                textPane.setText("「" + inputRegion + "」の天気情報を取得しました。\n");
+                nextLineButton.setEnabled(true);
+            }
+        });
+
+        nextLineButton.addActionListener(_ -> {
+            if (forecastIndex[0] < forecastList.size()) {
+                String text = forecastList.get(forecastIndex[0]);
+                appendWithHighlight(textPane, text);
+                forecastIndex[0]++;
+            } else {
+                appendWithHighlight(textPane, "これ以上の天気情報はありません。");
                 nextLineButton.setEnabled(false);
             }
         });
-
-        JPanel inputPanel = new JPanel();
-        inputPanel.setOpaque(false);
-        JTextField regionInput = new JTextField(20);
-        regionInput.setFont(new Font("Meiryo", Font.PLAIN, 20));
-
-        JButton showInputButton = new JButton("この地域を表示");
-        showInputButton.setFont(new Font("Meiryo", Font.BOLD, 28));
-        showInputButton.addActionListener(_ -> {
-            String inputRegion = regionInput.getText().trim();
-            if (REGION_CODES.containsKey(inputRegion)) {
-                currentRegion = inputRegion;
-                forecastList = fetchDetailedForecast(currentRegion);
-                forecastIndex = 0;
-                textPane.setText("");
-                appendWithHighlight("「" + currentRegion + "」の天気情報を読み込みました。\n順番に表示します。\n");
-                nextLineButton.setEnabled(true);
-            } else {
-                appendWithHighlight("「" + inputRegion + "」は知らない地域です。正しい都道府県名を入力してください。\n");
-            }
-        });
-
-        // エンターキーで表示ボタンを押したのと同じ動作
-        regionInput.addActionListener(_ -> showInputButton.doClick());
-
-        inputPanel.add(new JLabel("地域入力:"));
-        inputPanel.add(regionInput);
-        inputPanel.add(showInputButton); // ← これを追加しないとボタンが表示されない！
-
-        controlPanel.add(inputPanel);
-        controlPanel.add(nextLineButton);
-
-        textPane = new JTextPane();
-        textPane.setOpaque(false);
-        textPane.setForeground(Color.BLACK);
-        textPane.setFont(new Font("Serif", Font.BOLD, 24));
-        textPane.setEditable(false);
-
-        JScrollPane scrollPane = new JScrollPane(textPane);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-
-        topPanel.add(controlPanel, BorderLayout.NORTH);
-
-        backgroundPanel.add(topPanel, BorderLayout.NORTH);
-        backgroundPanel.add(scrollPane, BorderLayout.CENTER);
-
-        frame.setContentPane(backgroundPanel);
-        frame.setVisible(true);
     }
 
-    private static void appendWithHighlight(String text) {
+    private static void appendWithHighlight(JTextPane textPane, String text) {
         StyledDocument doc = textPane.getStyledDocument();
         Style style = textPane.addStyle("NormalStyle", null);
-        StyleConstants.setForeground(style, new Color(30, 30, 30));
-        StyleConstants.setFontSize(style, 24);
+        StyleConstants.setForeground(style, new Color(50, 50, 50));
+        StyleConstants.setFontSize(style, 20);
         StyleConstants.setBold(style, true);
+        StyleConstants.setLeftIndent(style, 10);
+        StyleConstants.setSpaceAbove(style, 5);
+        StyleConstants.setSpaceBelow(style, 5);
 
         try {
             doc.insertString(doc.getLength(), text + "\n", style);
+            textPane.setCaretPosition(doc.getLength());
         } catch (BadLocationException e) {
             e.printStackTrace();
         }
-    }
+    }    
 
     private static List<String> fetchDetailedForecast(String region) {
         List<String> result = new ArrayList<>();
