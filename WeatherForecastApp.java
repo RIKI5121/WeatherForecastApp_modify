@@ -147,6 +147,7 @@ public class WeatherForecastApp {
 
             JSONObject weatherPart = null;
             JSONObject popPart = null;
+            JSONObject windPart = null;
 
             for (int i = 0; i < timeSeriesArray.length(); i++) {
                 JSONObject ts = timeSeriesArray.getJSONObject(i);
@@ -159,17 +160,17 @@ public class WeatherForecastApp {
                     if (popPart == null && areaObj.has("pops")) {
                         popPart = ts;
                     }
-                    if (weatherPart != null && popPart != null) {
+                    if (windPart == null && areaObj.has("winds")) {
+                        windPart = ts;
+                    }
+                    if (weatherPart != null && popPart != null && windPart != null) {
                         break;
                     }
                 }
-                if (weatherPart != null && popPart != null) {
-                    break;
-                }
             }
 
-            if (weatherPart == null || popPart == null) {
-                result.add("必要な天気情報（天気・降水確率）が見つかりません。");
+            if (weatherPart == null || popPart == null || windPart == null) {
+                result.add("必要な天気情報（天気・降水確率・風向き）が見つかりません。");
                 return result;
             }
 
@@ -181,6 +182,10 @@ public class WeatherForecastApp {
             JSONObject popArea = popPart.getJSONArray("areas").getJSONObject(0);
             List<String> pops = getStringList(popArea.getJSONArray("pops"));
 
+            List<String> windTimes = getStringList(windPart.getJSONArray("timeDefines"));
+            JSONObject windArea = windPart.getJSONArray("areas").getJSONObject(0);
+            List<String> winds = getStringList(windArea.getJSONArray("winds"));
+
             for (int i = 0; i < weatherTimes.size() && i < weathers.size(); i++) {
                 String dateTime = weatherTimes.get(i);
                 String weather = weathers.get(i);
@@ -191,12 +196,24 @@ public class WeatherForecastApp {
                     String popValue = pops.get(j);
 
                     if (popTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
-                        popInfo.append(String.format("  [%s-%s] 降水確率: %s%%\n",
+                        popInfo.append(String.format("降水確率: %s%% [%s-%s]\n",
                                 popTime.substring(11, 16), getEndTime(popTime), popValue));
                     }
                 }
 
-                String line = String.format("【%s】 天気: %s\n%s", formatDateTime(dateTime), weather, popInfo.toString());
+                String windInfo = "";
+                for (int j = 0; j < windTimes.size() && j < winds.size(); j++) {
+                    String windTime = windTimes.get(j);
+                    if (windTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
+                        windInfo = "風向き: " + winds.get(j);
+                        break;
+                    }
+                }
+
+                String line = String.format("【%s】 \n天気: %s\n%s%s",
+                        formatDateTime(dateTime), weather, popInfo.toString(),
+                        windInfo.isEmpty() ? "" : windInfo + "\n");
+
                 result.add(line);
             }
 
