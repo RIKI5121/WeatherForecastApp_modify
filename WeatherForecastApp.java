@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.*;
 import java.net.*;
+import java.time.*;
 import java.util.*;
 import java.util.List;
 import org.json.*;
@@ -77,7 +78,7 @@ public class WeatherForecastApp {
         frame.setContentPane(mainPanel);
         frame.setVisible(true);
 
-        // ボタンの動作（例）
+        // ボタンの動作
         List<String> forecastList = new ArrayList<>();
         final int[] forecastIndex = { 0 };
 
@@ -95,9 +96,8 @@ public class WeatherForecastApp {
                 textPane.setText("天気情報が取得できませんでした。");
                 nextLineButton.setEnabled(false);
             } else {
-                // 今日の天気だけを表示
                 textPane.setText(forecastList.get(0));
-                forecastIndex[0] = 1; // 次は2件目を表示
+                forecastIndex[0] = 1;
                 nextLineButton.setEnabled(forecastList.size() > 1);
             }
         });
@@ -105,7 +105,7 @@ public class WeatherForecastApp {
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex[0] < forecastList.size()) {
                 String text = forecastList.get(forecastIndex[0]);
-                textPane.setText(text); // 前の天気は削除して新しい天気だけを表示
+                textPane.setText(text);
                 forecastIndex[0]++;
             } else {
                 textPane.setText("これ以上の天気情報はありません。");
@@ -143,18 +143,61 @@ public class WeatherForecastApp {
             }
 
             JSONObject weatherRoot = rootArray.getJSONObject(0);
-            JSONArray weatherTimeSeries = weatherRoot.getJSONArray("timeSeries");
-            JSONObject weatherPart = weatherTimeSeries.getJSONObject(0);
+            JSONArray timeSeriesArray = weatherRoot.getJSONArray("timeSeries");
+
+            JSONObject weatherPart = null;
+            JSONObject popPart = null;
+
+            for (int i = 0; i < timeSeriesArray.length(); i++) {
+                JSONObject ts = timeSeriesArray.getJSONObject(i);
+                JSONArray areas = ts.getJSONArray("areas");
+                for (int j = 0; j < areas.length(); j++) {
+                    JSONObject areaObj = areas.getJSONObject(j);
+                    if (weatherPart == null && areaObj.has("weathers")) {
+                        weatherPart = ts;
+                    }
+                    if (popPart == null && areaObj.has("pops")) {
+                        popPart = ts;
+                    }
+                    if (weatherPart != null && popPart != null) {
+                        break;
+                    }
+                }
+                if (weatherPart != null && popPart != null) {
+                    break;
+                }
+            }
+
+            if (weatherPart == null || popPart == null) {
+                result.add("必要な天気情報（天気・降水確率）が見つかりません。");
+                return result;
+            }
 
             List<String> weatherTimes = getStringList(weatherPart.getJSONArray("timeDefines"));
-            JSONArray weatherAreas = weatherPart.getJSONArray("areas");
-            JSONObject weatherArea = weatherAreas.getJSONObject(0);
+            JSONObject weatherArea = weatherPart.getJSONArray("areas").getJSONObject(0);
             List<String> weathers = getStringList(weatherArea.getJSONArray("weathers"));
 
-            int maxWeatherCount = Math.min(3, Math.min(weatherTimes.size(), weathers.size()));
-            for (int i = 0; i < maxWeatherCount; i++) {
-                String date = weatherTimes.get(i).substring(0, 10);
-                result.add("【天気】" + date + ": " + weathers.get(i));
+            List<String> popTimes = getStringList(popPart.getJSONArray("timeDefines"));
+            JSONObject popArea = popPart.getJSONArray("areas").getJSONObject(0);
+            List<String> pops = getStringList(popArea.getJSONArray("pops"));
+
+            for (int i = 0; i < weatherTimes.size() && i < weathers.size(); i++) {
+                String dateTime = weatherTimes.get(i);
+                String weather = weathers.get(i);
+
+                StringBuilder popInfo = new StringBuilder();
+                for (int j = 0; j < popTimes.size() && j < pops.size(); j++) {
+                    String popTime = popTimes.get(j);
+                    String popValue = pops.get(j);
+
+                    if (popTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
+                        popInfo.append(String.format("  [%s-%s] 降水確率: %s%%\n",
+                                popTime.substring(11, 16), getEndTime(popTime), popValue));
+                    }
+                }
+
+                String line = String.format("【%s】 天気: %s\n%s", formatDateTime(dateTime), weather, popInfo.toString());
+                result.add(line);
             }
 
         } catch (IOException | JSONException e) {
@@ -163,11 +206,52 @@ public class WeatherForecastApp {
         return result;
     }
 
+    private static String getEndTime(String startTime) {
+        try {
+            int hour = Integer.parseInt(startTime.substring(11, 13));
+            int endHour = (hour + 6) % 24; // 6時間後
+            return String.format("%02d:00", endHour);
+        } catch (Exception e) {
+            return "--:--";
+        }
+    }
+
     private static List<String> getStringList(JSONArray jsonArray) throws JSONException {
         List<String> list = new ArrayList<>();
         for (int i = 0; i < jsonArray.length(); i++) {
             list.add(jsonArray.getString(i));
         }
         return list;
+    }
+
+    // 追加：日時を「2025年06月06日（土） 00:00」形式に変換
+    private static String formatDateTime(String isoDateTime) {
+        try {
+            // 例: 2025-06-06T00:00:00+09:00 → 先頭10文字＋時間部分11〜16文字を取得
+            String datePart = isoDateTime.substring(0, 10); // 2025-06-06
+            String timePart = isoDateTime.substring(11, 16); // 00:00
+
+            // LocalDateに変換
+            LocalDate date = LocalDate.parse(datePart);
+
+            // 曜日を日本語の短縮形で取得（例：月、火、水…）
+            DayOfWeek dayOfWeek = date.getDayOfWeek();
+            String jpDayOfWeek = switch (dayOfWeek) {
+                case MONDAY -> "月";
+                case TUESDAY -> "火";
+                case WEDNESDAY -> "水";
+                case THURSDAY -> "木";
+                case FRIDAY -> "金";
+                case SATURDAY -> "土";
+                case SUNDAY -> "日";
+            };
+
+            return String.format("%d年%02d月%02d日（%s） %s",
+                    date.getYear(), date.getMonthValue(), date.getDayOfMonth(),
+                    jpDayOfWeek, timePart);
+
+        } catch (Exception e) {
+            return isoDateTime;
+        }
     }
 }
