@@ -196,7 +196,7 @@ public class WeatherForecastApp {
                     String popValue = pops.get(j);
 
                     if (popTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
-                        popInfo.append(String.format("降水確率: %s%% [%s-%s]\n",
+                        popInfo.append(String.format("降水確率（%s〜%s）: %s%%\n",
                                 popTime.substring(11, 16), getEndTime(popTime), popValue));
                     }
                 }
