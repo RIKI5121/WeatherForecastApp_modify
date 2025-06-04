@@ -1,5 +1,4 @@
 import javax.swing.*;
-import javax.swing.text.*;
 import java.awt.*;
 import java.io.*;
 import java.net.*;
@@ -96,40 +95,24 @@ public class WeatherForecastGUI {
                 textPane.setText("天気情報が取得できませんでした。");
                 nextLineButton.setEnabled(false);
             } else {
-                textPane.setText("「" + inputRegion + "」の天気情報を取得しました。\n");
-                nextLineButton.setEnabled(true);
+                // 今日の天気だけを表示
+                textPane.setText(forecastList.get(0));
+                forecastIndex[0] = 1; // 次は2件目を表示
+                nextLineButton.setEnabled(forecastList.size() > 1);
             }
         });
 
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex[0] < forecastList.size()) {
                 String text = forecastList.get(forecastIndex[0]);
-                appendWithHighlight(textPane, text);
+                textPane.setText(text); // 前の天気は削除して新しい天気だけを表示
                 forecastIndex[0]++;
             } else {
-                appendWithHighlight(textPane, "これ以上の天気情報はありません。");
+                textPane.setText("これ以上の天気情報はありません。");
                 nextLineButton.setEnabled(false);
             }
         });
     }
-
-    private static void appendWithHighlight(JTextPane textPane, String text) {
-        StyledDocument doc = textPane.getStyledDocument();
-        Style style = textPane.addStyle("NormalStyle", null);
-        StyleConstants.setForeground(style, new Color(50, 50, 50));
-        StyleConstants.setFontSize(style, 20);
-        StyleConstants.setBold(style, true);
-        StyleConstants.setLeftIndent(style, 10);
-        StyleConstants.setSpaceAbove(style, 5);
-        StyleConstants.setSpaceBelow(style, 5);
-
-        try {
-            doc.insertString(doc.getLength(), text + "\n", style);
-            textPane.setCaretPosition(doc.getLength());
-        } catch (BadLocationException e) {
-            e.printStackTrace();
-        }
-    }    
 
     private static List<String> fetchDetailedForecast(String region) {
         List<String> result = new ArrayList<>();
@@ -178,7 +161,7 @@ public class WeatherForecastGUI {
             result.add("詳細天気情報の取得に失敗しました: " + e.getMessage());
         }
         return result;
-    }    
+    }
 
     private static List<String> getStringList(JSONArray jsonArray) throws JSONException {
         List<String> list = new ArrayList<>();
