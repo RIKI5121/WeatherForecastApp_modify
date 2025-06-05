@@ -34,15 +34,14 @@ public class WeatherForecastApp {
         JFrame frame = new JFrame("天気予報アプリ");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(900, 600);
-        frame.setLocationRelativeTo(null); // 画面中央に表示
+        frame.setLocationRelativeTo(null);
 
         JPanel mainPanel = new JPanel(new BorderLayout(15, 15));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        mainPanel.setBackground(new Color(245, 245, 245)); // 明るいグレー背景
+        mainPanel.setBackground(new Color(245, 245, 245));
 
-        // 入力エリアパネル（上部）
         JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
-        inputPanel.setBackground(new Color(230, 230, 250)); // 薄いラベンダー色
+        inputPanel.setBackground(new Color(230, 230, 250));
         inputPanel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(Color.GRAY), "地域入力"));
 
@@ -62,7 +61,6 @@ public class WeatherForecastApp {
 
         mainPanel.add(inputPanel, BorderLayout.NORTH);
 
-        // テキスト表示エリア
         JTextPane textPane = new JTextPane();
         textPane.setEditable(false);
         textPane.setFont(new Font("Meiryo", Font.PLAIN, 20));
@@ -78,7 +76,6 @@ public class WeatherForecastApp {
         frame.setContentPane(mainPanel);
         frame.setVisible(true);
 
-        // ボタンの動作
         List<String> forecastList = new ArrayList<>();
         final int[] forecastIndex = { 0 };
 
@@ -104,8 +101,7 @@ public class WeatherForecastApp {
 
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex[0] < forecastList.size()) {
-                String text = forecastList.get(forecastIndex[0]);
-                textPane.setText(text);
+                textPane.setText(forecastList.get(forecastIndex[0]));
                 forecastIndex[0]++;
             } else {
                 textPane.setText("これ以上の天気情報はありません。");
@@ -118,14 +114,8 @@ public class WeatherForecastApp {
         List<String> result = new ArrayList<>();
         try {
             String code = REGION_CODES.get(region);
-            if (code == null) {
-                result.add("指定された地域コードがありません: " + region);
-                return result;
-            }
-
             URI uri = URI.create("https://www.jma.go.jp/bosai/forecast/data/forecast/" + code + ".json");
-            URL url = uri.toURL();
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
             conn.setRequestMethod("GET");
 
             StringBuilder jsonText = new StringBuilder();
@@ -137,54 +127,59 @@ public class WeatherForecastApp {
             }
 
             JSONArray rootArray = new JSONArray(jsonText.toString());
-            if (rootArray.length() < 1) {
-                result.add("APIのレスポンスデータが不足しています。");
-                return result;
-            }
-
             JSONObject weatherRoot = rootArray.getJSONObject(0);
             JSONArray timeSeriesArray = weatherRoot.getJSONArray("timeSeries");
 
-            JSONObject weatherPart = null;
-            JSONObject popPart = null;
-            JSONObject windPart = null;
+            JSONObject weatherPart = null, popPart = null, windPart = null, tempPart = null;
 
             for (int i = 0; i < timeSeriesArray.length(); i++) {
                 JSONObject ts = timeSeriesArray.getJSONObject(i);
                 JSONArray areas = ts.getJSONArray("areas");
                 for (int j = 0; j < areas.length(); j++) {
-                    JSONObject areaObj = areas.getJSONObject(j);
-                    if (weatherPart == null && areaObj.has("weathers")) {
+                    JSONObject area = areas.getJSONObject(j);
+                    if (weatherPart == null && area.has("weathers"))
                         weatherPart = ts;
-                    }
-                    if (popPart == null && areaObj.has("pops")) {
+                    if (popPart == null && area.has("pops"))
                         popPart = ts;
-                    }
-                    if (windPart == null && areaObj.has("winds")) {
+                    if (windPart == null && area.has("winds"))
                         windPart = ts;
-                    }
-                    if (weatherPart != null && popPart != null && windPart != null) {
-                        break;
-                    }
+                    if (tempPart == null && (area.has("temps") || area.has("tempMin") || area.has("tempMax")))
+                        tempPart = ts;
                 }
             }
 
             if (weatherPart == null || popPart == null || windPart == null) {
-                result.add("必要な天気情報（天気・降水確率・風向き）が見つかりません。");
+                result.add("必要な天気情報が取得できませんでした。");
                 return result;
             }
 
             List<String> weatherTimes = getStringList(weatherPart.getJSONArray("timeDefines"));
-            JSONObject weatherArea = weatherPart.getJSONArray("areas").getJSONObject(0);
-            List<String> weathers = getStringList(weatherArea.getJSONArray("weathers"));
+            List<String> weathers = getStringList(
+                    weatherPart.getJSONArray("areas").getJSONObject(0).getJSONArray("weathers"));
 
             List<String> popTimes = getStringList(popPart.getJSONArray("timeDefines"));
-            JSONObject popArea = popPart.getJSONArray("areas").getJSONObject(0);
-            List<String> pops = getStringList(popArea.getJSONArray("pops"));
+            List<String> pops = getStringList(popPart.getJSONArray("areas").getJSONObject(0).getJSONArray("pops"));
 
             List<String> windTimes = getStringList(windPart.getJSONArray("timeDefines"));
-            JSONObject windArea = windPart.getJSONArray("areas").getJSONObject(0);
-            List<String> winds = getStringList(windArea.getJSONArray("winds"));
+            List<String> winds = getStringList(windPart.getJSONArray("areas").getJSONObject(0).getJSONArray("winds"));
+
+            List<String> tempTimes = new ArrayList<>();
+            List<String> temps = new ArrayList<>();
+            if (tempPart != null) {
+                tempTimes = getStringList(tempPart.getJSONArray("timeDefines"));
+                JSONObject tempArea = tempPart.getJSONArray("areas").getJSONObject(0);
+                if (tempArea.has("temps")) {
+                    temps = getStringList(tempArea.getJSONArray("temps"));
+                } else {
+                    List<String> minTemps = getStringList(tempArea.optJSONArray("tempMin"));
+                    List<String> maxTemps = getStringList(tempArea.optJSONArray("tempMax"));
+                    for (int i = 0; i < Math.max(minTemps.size(), maxTemps.size()); i++) {
+                        String min = (i < minTemps.size()) ? minTemps.get(i) : "--";
+                        String max = (i < maxTemps.size()) ? maxTemps.get(i) : "--";
+                        temps.add(String.format("最低 %s℃ / 最高 %s℃", min, max));
+                    }
+                }
+            }
 
             for (int i = 0; i < weatherTimes.size() && i < weathers.size(); i++) {
                 String dateTime = weatherTimes.get(i);
@@ -193,67 +188,70 @@ public class WeatherForecastApp {
                 StringBuilder popInfo = new StringBuilder();
                 for (int j = 0; j < popTimes.size() && j < pops.size(); j++) {
                     String popTime = popTimes.get(j);
-                    String popValue = pops.get(j);
-
                     if (popTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
                         popInfo.append(String.format("降水確率（%s〜%s）: %s%%\n",
-                                popTime.substring(11, 16), getEndTime(popTime), popValue));
+                                popTime.substring(11, 16), getEndTime(popTime), pops.get(j)));
                     }
                 }
 
                 String windInfo = "";
                 for (int j = 0; j < windTimes.size() && j < winds.size(); j++) {
-                    String windTime = windTimes.get(j);
-                    if (windTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
+                    if (windTimes.get(j).substring(0, 10).equals(dateTime.substring(0, 10))) {
                         windInfo = "風向き: " + winds.get(j);
                         break;
                     }
                 }
 
-                String line = String.format("【%s】 \n天気: %s\n%s%s",
-                        formatDateTime(dateTime), weather, popInfo.toString(),
+                String tempInfo = "";
+                for (int j = 0; j < tempTimes.size() && j < temps.size(); j++) {
+                    if (tempTimes.get(j).substring(0, 10).equals(dateTime.substring(0, 10))) {
+                        tempInfo = "気温: " + temps.get(j) + "℃\n";
+                        break;
+                    }
+                }
+
+                String line = String.format("【%s】 \n天気: %s\n%s%s%s",
+                        formatDateTime(dateTime), weather,
+                        tempInfo,
+                        popInfo.toString(),
                         windInfo.isEmpty() ? "" : windInfo + "\n");
 
                 result.add(line);
             }
 
-        } catch (IOException | JSONException e) {
-            result.add("詳細天気情報の取得に失敗しました: " + e.getMessage());
+        } catch (Exception e) {
+            result.add("天気情報の取得に失敗しました: " + e.getMessage());
         }
+
         return result;
     }
 
     private static String getEndTime(String startTime) {
         try {
             int hour = Integer.parseInt(startTime.substring(11, 13));
-            int endHour = (hour + 6) % 24; // 6時間後
+            int endHour = (hour + 6) % 24;
             return String.format("%02d:00", endHour);
         } catch (Exception e) {
             return "--:--";
         }
     }
 
-    private static List<String> getStringList(JSONArray jsonArray) throws JSONException {
+    private static List<String> getStringList(JSONArray jsonArray) {
         List<String> list = new ArrayList<>();
-        for (int i = 0; i < jsonArray.length(); i++) {
-            list.add(jsonArray.getString(i));
+        if (jsonArray != null) {
+            for (int i = 0; i < jsonArray.length(); i++) {
+                list.add(jsonArray.optString(i, "--"));
+            }
         }
         return list;
     }
 
-    // 追加：日時を「2025年06月06日（土） 00:00」形式に変換
     private static String formatDateTime(String isoDateTime) {
         try {
-            // 例: 2025-06-06T00:00:00+09:00 → 先頭10文字＋時間部分11〜16文字を取得
-            String datePart = isoDateTime.substring(0, 10); // 2025-06-06
-            String timePart = isoDateTime.substring(11, 16); // 00:00
-
-            // LocalDateに変換
+            String datePart = isoDateTime.substring(0, 10);
+            String timePart = isoDateTime.substring(11, 16);
             LocalDate date = LocalDate.parse(datePart);
-
-            // 曜日を日本語の短縮形で取得（例：月、火、水…）
-            DayOfWeek dayOfWeek = date.getDayOfWeek();
-            String jpDayOfWeek = switch (dayOfWeek) {
+            String jpDayOfWeek = switch (date.getDayOfWeek()) {
                 case MONDAY -> "月";
                 case TUESDAY -> "火";
                 case WEDNESDAY -> "水";
@@ -262,11 +260,9 @@ public class WeatherForecastApp {
                 case SATURDAY -> "土";
                 case SUNDAY -> "日";
             };
-
             return String.format("%d年%02d月%02d日（%s） %s",
                     date.getYear(), date.getMonthValue(), date.getDayOfMonth(),
                     jpDayOfWeek, timePart);
-
         } catch (Exception e) {
             return isoDateTime;
         }
