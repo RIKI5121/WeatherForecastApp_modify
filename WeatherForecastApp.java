@@ -1,3 +1,4 @@
+
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
@@ -204,8 +205,10 @@ public class WeatherForecastApp {
 
                 String tempInfo = "";
                 for (int j = 0; j < tempTimes.size() && j < temps.size(); j++) {
-                    if (tempTimes.get(j).substring(0, 10).equals(dateTime.substring(0, 10))) {
-                        tempInfo = "気温: " + temps.get(j) + "℃\n";
+                    String tempDate = tempTimes.get(j).substring(0, 10);
+                    String tempHour = tempTimes.get(j).substring(11, 13);
+                    if (tempDate.equals(dateTime.substring(0, 10)) && tempHour.equals("09")) {
+                        tempInfo = "最高気温: " + temps.get(j) + "℃\n";
                         break;
                     }
                 }
