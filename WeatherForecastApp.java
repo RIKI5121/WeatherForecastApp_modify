@@ -1,11 +1,12 @@
-
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
 import java.time.*;
 import java.util.*;
 import java.util.List;
+import javax.imageio.ImageIO;
 import org.json.*;
 
 public class WeatherForecastApp {
@@ -37,7 +38,8 @@ public class WeatherForecastApp {
         frame.setSize(900, 600);
         frame.setLocationRelativeTo(null);
 
-        JPanel mainPanel = new JPanel(new BorderLayout(15, 15));
+        BackgroundPanel mainPanel = new BackgroundPanel();
+        mainPanel.setLayout(new BorderLayout(15, 15));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         mainPanel.setBackground(new Color(245, 245, 245));
 
@@ -71,6 +73,9 @@ public class WeatherForecastApp {
         JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(Color.GRAY), "天気予報"));
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        textPane.setOpaque(false);
 
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
@@ -78,6 +83,7 @@ public class WeatherForecastApp {
         frame.setVisible(true);
 
         List<String> forecastList = new ArrayList<>();
+        List<String> weatherDescriptions = new ArrayList<>(); // 天気の文字列を保存
         final int[] forecastIndex = { 0 };
 
         showInputButton.addActionListener(_ -> {
@@ -87,26 +93,72 @@ public class WeatherForecastApp {
                 return;
             }
             forecastList.clear();
-            forecastList.addAll(fetchDetailedForecast(inputRegion));
-            forecastIndex[0] = 0;
-            textPane.setText("");
-            if (forecastList.isEmpty()) {
+            weatherDescriptions.clear();
+
+            // 天気情報のリストを取得
+            List<String> detailedForecasts = fetchDetailedForecast(inputRegion);
+            if (detailedForecasts.isEmpty()) {
                 textPane.setText("天気情報が取得できませんでした。");
                 nextLineButton.setEnabled(false);
-            } else {
-                textPane.setText(forecastList.get(0));
-                forecastIndex[0] = 1;
-                nextLineButton.setEnabled(forecastList.size() > 1);
+                mainPanel.setBackgroundImage(null); // 背景なし
+                mainPanel.repaint();
+                return;
             }
+
+            // 天気文字列だけ抜き出し（「天気: ◯◯」の行を探す）
+            for (String forecast : detailedForecasts) {
+                forecastList.add(forecast);
+                // 天気の行を抽出
+                String weatherLine = null;
+                for (String line : forecast.split("\n")) {
+                    if (line.startsWith("天気: ")) {
+                        // 「天気: ◯◯」の「◯◯」の最初の単語だけを抽出（全角・半角スペース、タブも区切りとする）
+                        String weatherValue = line.substring(4).trim();
+                        if (!weatherValue.isEmpty()) {
+                            // 「くもり 昼前まで時々晴れ」→「くもり」
+                            weatherLine = weatherValue.split("[ 　\t]")[0];
+                        } else {
+                            weatherLine = "";
+                        }
+                        break;
+                    }
+                }
+                weatherDescriptions.add(weatherLine != null ? weatherLine : "");
+            }
+
+            forecastIndex[0] = 0;
+            // 最初の表示
+            textPane.setText(forecastList.get(0));
+            // 背景画像セット
+            mainPanel.setBackgroundImage(getBackgroundImageForWeather(weatherDescriptions.get(0)));
+            mainPanel.repaint();
+
+            forecastIndex[0] = 1;
+            nextLineButton.setEnabled(forecastList.size() > 1);
         });
 
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex[0] < forecastList.size()) {
                 textPane.setText(forecastList.get(forecastIndex[0]));
+                // 天気情報の最初の天気ワードで背景を切り替える
+                String weatherLine = "";
+                for (String line : forecastList.get(forecastIndex[0]).split("\n")) {
+                    if (line.startsWith("天気: ")) {
+                        String weatherValue = line.substring(4).trim();
+                        if (!weatherValue.isEmpty()) {
+                            weatherLine = weatherValue.split("[ 　\t]")[0];
+                        }
+                        break;
+                    }
+                }
+                mainPanel.setBackgroundImage(getBackgroundImageForWeather(weatherLine));
+                mainPanel.repaint();
                 forecastIndex[0]++;
             } else {
                 textPane.setText("これ以上の天気情報はありません。");
                 nextLineButton.setEnabled(false);
+                mainPanel.setBackgroundImage(null); // 背景リセット
+                mainPanel.repaint();
             }
         });
     }
@@ -218,56 +270,85 @@ public class WeatherForecastApp {
                         tempInfo,
                         popInfo.toString(),
                         windInfo.isEmpty() ? "" : windInfo + "\n");
-
                 result.add(line);
             }
 
         } catch (Exception e) {
-            result.add("天気情報の取得に失敗しました: " + e.getMessage());
+            e.printStackTrace();
+            result.add("天気情報の取得中にエラーが発生しました。");
         }
-
         return result;
+    }
+
+    private static List<String> getStringList(JSONArray jsonArray) {
+        List<String> list = new ArrayList<>();
+        if (jsonArray == null)
+            return list;
+        for (int i = 0; i < jsonArray.length(); i++) {
+            list.add(jsonArray.optString(i, ""));
+        }
+        return list;
     }
 
     private static String getEndTime(String startTime) {
         try {
-            int hour = Integer.parseInt(startTime.substring(11, 13));
-            int endHour = (hour + 6) % 24;
-            return String.format("%02d:00", endHour);
+            LocalTime start = LocalTime.parse(startTime.substring(11));
+            LocalTime end = start.plusHours(6);
+            return end.toString().substring(0, 5);
         } catch (Exception e) {
             return "--:--";
         }
     }
 
-    private static List<String> getStringList(JSONArray jsonArray) {
-        List<String> list = new ArrayList<>();
-        if (jsonArray != null) {
-            for (int i = 0; i < jsonArray.length(); i++) {
-                list.add(jsonArray.optString(i, "--"));
-            }
+    private static String formatDateTime(String dateTime) {
+        try {
+            LocalDateTime dt = LocalDateTime.parse(dateTime);
+            return dt.format(java.time.format.DateTimeFormatter.ofPattern("M月d日 HH:mm"));
+        } catch (Exception e) {
+            return dateTime;
         }
-        return list;
     }
 
-    private static String formatDateTime(String isoDateTime) {
+    private static BufferedImage getBackgroundImageForWeather(String weather) {
+        String imgPath;
+        if (weather != null && (weather.startsWith("くもり") || weather.startsWith("曇") || weather.startsWith("曇り")
+                || weather.contains("くもり") || weather.contains("曇") || weather.contains("曇り"))) {
+            imgPath = "backgrounds/cloudy.jpg";
+        } else if (weather != null && (weather.contains("晴れ") || weather.contains("晴"))) {
+            imgPath = "backgrounds/sunny.jpg";
+        } else if (weather != null && weather.contains("雨")) {
+            imgPath = "backgrounds/rainy.jpg";
+        } else if (weather != null && weather.contains("雪")) {
+            imgPath = "backgrounds/snowy.jpg";
+        } else {
+            imgPath = "backgrounds/default.jpg";
+        }
+
         try {
-            String datePart = isoDateTime.substring(0, 10);
-            String timePart = isoDateTime.substring(11, 16);
-            LocalDate date = LocalDate.parse(datePart);
-            String jpDayOfWeek = switch (date.getDayOfWeek()) {
-                case MONDAY -> "月";
-                case TUESDAY -> "火";
-                case WEDNESDAY -> "水";
-                case THURSDAY -> "木";
-                case FRIDAY -> "金";
-                case SATURDAY -> "土";
-                case SUNDAY -> "日";
-            };
-            return String.format("%d年%02d月%02d日（%s） %s",
-                    date.getYear(), date.getMonthValue(), date.getDayOfMonth(),
-                    jpDayOfWeek, timePart);
-        } catch (Exception e) {
-            return isoDateTime;
+            return ImageIO.read(new File(imgPath));
+        } catch (IOException e) {
+            System.err.println("背景画像の読み込みに失敗しました: " + imgPath);
+            return null;
+        }
+    }
+
+    /**
+     * 背景画像を描画できるJPanel拡張
+     */
+    static class BackgroundPanel extends JPanel {
+        private BufferedImage backgroundImage;
+
+        public void setBackgroundImage(BufferedImage img) {
+            this.backgroundImage = img;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (backgroundImage != null) {
+                // パネルサイズに合わせて画像を引き伸ばす
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
         }
     }
 }
