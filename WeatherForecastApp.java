@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.List;
 import javax.imageio.ImageIO;
 import org.json.*;
+import javax.swing.text.*;
 
 public class WeatherForecastApp {
     private static final Map<String, String> REGION_CODES = Map.ofEntries(
@@ -112,8 +113,20 @@ public class WeatherForecastApp {
             }
 
             forecastIndex[0] = 0;
-            textPane.setText(forecastList.get(0));
+            setStyledText(textPane, forecastList.get(0));
             forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherDescriptions.get(0)));
+            if (weatherDescriptions.get(0) != null) {
+                String w = weatherDescriptions.get(0);
+                if (w.contains("晴れ") || w.contains("晴")) {
+                    forecastPanel.setTextColor(Color.BLACK);
+                } else if (w.contains("くもり") || w.contains("曇") || w.contains("雨")) {
+                    forecastPanel.setTextColor(Color.WHITE);
+                } else {
+                    forecastPanel.setTextColor(Color.WHITE);
+                }
+            } else {
+                forecastPanel.setTextColor(Color.WHITE);
+            }
             forecastPanel.repaint();
 
             forecastIndex[0] = 1;
@@ -122,7 +135,7 @@ public class WeatherForecastApp {
 
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex[0] < forecastList.size()) {
-                textPane.setText(forecastList.get(forecastIndex[0]));
+                setStyledText(textPane, forecastList.get(forecastIndex[0]));
                 String weatherLine = "";
                 for (String line : forecastList.get(forecastIndex[0]).split("\n")) {
                     if (line.startsWith("天気: ")) {
@@ -134,6 +147,11 @@ public class WeatherForecastApp {
                     }
                 }
                 forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherLine));
+                if (weatherLine != null && (weatherLine.contains("晴れ") || weatherLine.contains("晴"))) {
+                    forecastPanel.setTextColor(Color.BLACK);
+                } else {
+                    forecastPanel.setTextColor(Color.WHITE);
+                }
                 forecastPanel.repaint();
                 forecastIndex[0]++;
             } else {
@@ -224,8 +242,15 @@ public class WeatherForecastApp {
                 for (int j = 0; j < popTimes.size() && j < pops.size(); j++) {
                     String popTime = popTimes.get(j);
                     if (popTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
-                        popInfo.append(String.format("降水確率（%s〜%s）: %s%%\n",
-                                popTime.substring(11, 16), getEndTime(popTime), pops.get(j)));
+                        String start = popTime.substring(11, 16);
+                        String end;
+                        if (j + 1 < popTimes.size()
+                                && popTimes.get(j + 1).substring(0, 10).equals(popTime.substring(0, 10))) {
+                            end = popTimes.get(j + 1).substring(11, 16);
+                        } else {
+                            end = "--:--";
+                        }
+                        popInfo.append(String.format("降水確率（%s〜%s）: %s%%\n", start, end, pops.get(j)));
                     }
                 }
 
@@ -247,7 +272,7 @@ public class WeatherForecastApp {
                     }
                 }
 
-                String line = String.format("【%s】 \n天気: %s\n%s%s%s",
+                String line = String.format("日時: %s\n天気: %s\n%s%s%s",
                         formatDateTime(dateTime), weather,
                         tempInfo,
                         popInfo.toString(),
@@ -272,20 +297,10 @@ public class WeatherForecastApp {
         return list;
     }
 
-    private static String getEndTime(String startTime) {
-        try {
-            LocalTime start = LocalTime.parse(startTime.substring(11));
-            LocalTime end = start.plusHours(6);
-            return end.toString().substring(0, 5);
-        } catch (Exception e) {
-            return "--:--";
-        }
-    }
-
     private static String formatDateTime(String dateTime) {
         try {
             LocalDateTime dt = LocalDateTime.parse(dateTime);
-            return dt.format(java.time.format.DateTimeFormatter.ofPattern("M月d日 HH:mm"));
+            return dt.format(java.time.format.DateTimeFormatter.ofPattern("M月d日（E）HH時", java.util.Locale.JAPANESE));
         } catch (Exception e) {
             return dateTime;
         }
@@ -325,6 +340,7 @@ public class WeatherForecastApp {
             textPane.setFont(new Font("Meiryo", Font.PLAIN, 20));
             textPane.setOpaque(false);
             textPane.setMargin(new Insets(10, 10, 10, 10));
+            textPane.setForeground(Color.WHITE);
 
             JScrollPane scrollPane = new JScrollPane(textPane);
             scrollPane.setBorder(BorderFactory.createTitledBorder(
@@ -343,12 +359,38 @@ public class WeatherForecastApp {
             this.backgroundImage = img;
         }
 
+        public void setTextColor(Color color) {
+            textPane.setForeground(color);
+        }
+
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (backgroundImage != null) {
                 g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
             }
+        }
+    }
+
+    // ヘッダー（日時）を太字にするユーティリティ
+    private static void setStyledText(JTextPane textPane, String text) {
+        textPane.setText("");
+        StyledDocument doc = textPane.getStyledDocument();
+        SimpleAttributeSet bold = new SimpleAttributeSet();
+        StyleConstants.setBold(bold, true);
+        StyleConstants.setFontSize(bold, 22);
+        StyleConstants.setForeground(bold, textPane.getForeground());
+        SimpleAttributeSet normal = new SimpleAttributeSet();
+        StyleConstants.setFontSize(normal, 20);
+        StyleConstants.setForeground(normal, textPane.getForeground());
+        String[] lines = text.split("\n", 2);
+        try {
+            doc.insertString(doc.getLength(), lines[0] + "\n", bold);
+            if (lines.length > 1) {
+                doc.insertString(doc.getLength(), lines[1], normal);
+            }
+        } catch (BadLocationException e) {
+            textPane.setText(text);
         }
     }
 }
