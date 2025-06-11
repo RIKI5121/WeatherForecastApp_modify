@@ -38,7 +38,7 @@ public class WeatherForecastApp {
         frame.setSize(900, 600);
         frame.setLocationRelativeTo(null);
 
-        BackgroundPanel mainPanel = new BackgroundPanel();
+        JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BorderLayout(15, 15));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         mainPanel.setBackground(new Color(245, 245, 245));
@@ -64,26 +64,16 @@ public class WeatherForecastApp {
 
         mainPanel.add(inputPanel, BorderLayout.NORTH);
 
-        JTextPane textPane = new JTextPane();
-        textPane.setEditable(false);
-        textPane.setFont(new Font("Meiryo", Font.PLAIN, 20));
-        textPane.setBackground(Color.WHITE);
-        textPane.setMargin(new Insets(10, 10, 10, 10));
+        ForecastPanel forecastPanel = new ForecastPanel();
+        JTextPane textPane = forecastPanel.getTextPane();
 
-        JScrollPane scrollPane = new JScrollPane(textPane);
-        scrollPane.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(Color.GRAY), "天気予報"));
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        textPane.setOpaque(false);
-
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(forecastPanel, BorderLayout.CENTER);
 
         frame.setContentPane(mainPanel);
         frame.setVisible(true);
 
         List<String> forecastList = new ArrayList<>();
-        List<String> weatherDescriptions = new ArrayList<>(); // 天気の文字列を保存
+        List<String> weatherDescriptions = new ArrayList<>();
         final int[] forecastIndex = { 0 };
 
         showInputButton.addActionListener(_ -> {
@@ -95,27 +85,22 @@ public class WeatherForecastApp {
             forecastList.clear();
             weatherDescriptions.clear();
 
-            // 天気情報のリストを取得
             List<String> detailedForecasts = fetchDetailedForecast(inputRegion);
             if (detailedForecasts.isEmpty()) {
                 textPane.setText("天気情報が取得できませんでした。");
                 nextLineButton.setEnabled(false);
-                mainPanel.setBackgroundImage(null); // 背景なし
-                mainPanel.repaint();
+                forecastPanel.setBackgroundImage(null);
+                forecastPanel.repaint();
                 return;
             }
 
-            // 天気文字列だけ抜き出し（「天気: ◯◯」の行を探す）
             for (String forecast : detailedForecasts) {
                 forecastList.add(forecast);
-                // 天気の行を抽出
                 String weatherLine = null;
                 for (String line : forecast.split("\n")) {
                     if (line.startsWith("天気: ")) {
-                        // 「天気: ◯◯」の「◯◯」の最初の単語だけを抽出（全角・半角スペース、タブも区切りとする）
                         String weatherValue = line.substring(4).trim();
                         if (!weatherValue.isEmpty()) {
-                            // 「くもり 昼前まで時々晴れ」→「くもり」
                             weatherLine = weatherValue.split("[ 　\t]")[0];
                         } else {
                             weatherLine = "";
@@ -127,11 +112,9 @@ public class WeatherForecastApp {
             }
 
             forecastIndex[0] = 0;
-            // 最初の表示
             textPane.setText(forecastList.get(0));
-            // 背景画像セット
-            mainPanel.setBackgroundImage(getBackgroundImageForWeather(weatherDescriptions.get(0)));
-            mainPanel.repaint();
+            forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherDescriptions.get(0)));
+            forecastPanel.repaint();
 
             forecastIndex[0] = 1;
             nextLineButton.setEnabled(forecastList.size() > 1);
@@ -140,7 +123,6 @@ public class WeatherForecastApp {
         nextLineButton.addActionListener(_ -> {
             if (forecastIndex[0] < forecastList.size()) {
                 textPane.setText(forecastList.get(forecastIndex[0]));
-                // 天気情報の最初の天気ワードで背景を切り替える
                 String weatherLine = "";
                 for (String line : forecastList.get(forecastIndex[0]).split("\n")) {
                     if (line.startsWith("天気: ")) {
@@ -151,14 +133,14 @@ public class WeatherForecastApp {
                         break;
                     }
                 }
-                mainPanel.setBackgroundImage(getBackgroundImageForWeather(weatherLine));
-                mainPanel.repaint();
+                forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherLine));
+                forecastPanel.repaint();
                 forecastIndex[0]++;
             } else {
                 textPane.setText("これ以上の天気情報はありません。");
                 nextLineButton.setEnabled(false);
-                mainPanel.setBackgroundImage(null); // 背景リセット
-                mainPanel.repaint();
+                forecastPanel.setBackgroundImage(null);
+                forecastPanel.repaint();
             }
         });
     }
@@ -311,8 +293,7 @@ public class WeatherForecastApp {
 
     private static BufferedImage getBackgroundImageForWeather(String weather) {
         String imgPath;
-        if (weather != null && (weather.startsWith("くもり") || weather.startsWith("曇") || weather.startsWith("曇り")
-                || weather.contains("くもり") || weather.contains("曇") || weather.contains("曇り"))) {
+        if (weather != null && (weather.contains("くもり") || weather.contains("曇"))) {
             imgPath = "backgrounds/cloudy.jpg";
         } else if (weather != null && (weather.contains("晴れ") || weather.contains("晴"))) {
             imgPath = "backgrounds/sunny.jpg";
@@ -332,11 +313,31 @@ public class WeatherForecastApp {
         }
     }
 
-    /**
-     * 背景画像を描画できるJPanel拡張
-     */
-    static class BackgroundPanel extends JPanel {
+    // 天気予報欄にだけ背景画像を描画するパネル
+    static class ForecastPanel extends JPanel {
         private BufferedImage backgroundImage;
+        private JTextPane textPane;
+
+        public ForecastPanel() {
+            setLayout(new BorderLayout());
+            textPane = new JTextPane();
+            textPane.setEditable(false);
+            textPane.setFont(new Font("Meiryo", Font.PLAIN, 20));
+            textPane.setOpaque(false);
+            textPane.setMargin(new Insets(10, 10, 10, 10));
+
+            JScrollPane scrollPane = new JScrollPane(textPane);
+            scrollPane.setBorder(BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(Color.GRAY), "天気予報"));
+            scrollPane.setOpaque(false);
+            scrollPane.getViewport().setOpaque(false);
+
+            add(scrollPane, BorderLayout.CENTER);
+        }
+
+        public JTextPane getTextPane() {
+            return textPane;
+        }
 
         public void setBackgroundImage(BufferedImage img) {
             this.backgroundImage = img;
@@ -346,7 +347,6 @@ public class WeatherForecastApp {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (backgroundImage != null) {
-                // パネルサイズに合わせて画像を引き伸ばす
                 g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
             }
         }
