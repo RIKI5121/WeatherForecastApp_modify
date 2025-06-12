@@ -4,7 +4,7 @@ import java.util.*;
 import java.util.List;
 
 public class WeatherForecastFrame extends JFrame {
-    private final ForecastPanel forecastPanel;
+    private final WeatherForecastPanel forecastPanel;
     private final JTextPane textPane;
     private final JTextField regionInput;
     private final JButton showInputButton, prevLineButton, nextLineButton;
@@ -48,7 +48,7 @@ public class WeatherForecastFrame extends JFrame {
 
         mainPanel.add(inputPanel, BorderLayout.NORTH);
 
-        forecastPanel = new ForecastPanel();
+        forecastPanel = new WeatherForecastPanel();
         textPane = forecastPanel.getTextPane();
         mainPanel.add(forecastPanel, BorderLayout.CENTER);
         setContentPane(mainPanel);
@@ -64,90 +64,77 @@ public class WeatherForecastFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "正しい都道府県名を入力してください。", "入力エラー", JOptionPane.ERROR_MESSAGE);
             return;
         }
+
         forecastList.clear();
         weatherDescriptions.clear();
+
         List<String> detailedForecasts = WeatherForecastUtil.fetchDetailedForecast(inputRegion);
         if (detailedForecasts.isEmpty()) {
             textPane.setText("天気情報が取得できませんでした。");
-            nextLineButton.setEnabled(false);
-            prevLineButton.setEnabled(false);
             forecastPanel.setBackgroundImage(null);
             forecastPanel.repaint();
+            nextLineButton.setEnabled(false);
+            prevLineButton.setEnabled(false);
             return;
         }
+
         for (String forecast : detailedForecasts) {
             forecastList.add(forecast);
-            String weatherLine = null;
-            for (String line : forecast.split("\r?\n")) { // OS依存の改行混在対策
-                if (line.startsWith("天気: ")) {
-                    String weatherValue = line.substring(4).trim();
-                    if (!weatherValue.isEmpty()) {
-                        weatherLine = weatherValue.split("[ 　\t]")[0];
-                    } else {
-                        weatherLine = "";
-                    }
-                    break;
-                }
-            }
-            weatherDescriptions.add(weatherLine != null ? weatherLine : "");
+            weatherDescriptions.add(extractWeather(forecast));
         }
+
         forecastIndex = 0;
-        WeatherForecastUtil.setStyledText(textPane, forecastList.get(0));
-        forecastPanel.setBackgroundImage(WeatherForecastUtil.getBackgroundImageForWeather(weatherDescriptions.get(0)));
-        forecastPanel.setTextColor(Color.BLACK);
-        forecastPanel.repaint();
-        forecastIndex = 1;
-        nextLineButton.setEnabled(forecastList.size() > 1);
-        prevLineButton.setEnabled(false);
+        showForecastAtIndex(forecastIndex);
+        updateButtonStates();
+
+        updateButtonStates();
     }
 
     private void onNextLine() {
         if (forecastIndex < forecastList.size()) {
-            WeatherForecastUtil.setStyledText(textPane, forecastList.get(forecastIndex));
-            String weatherLine = "";
-            for (String line : forecastList.get(forecastIndex).split("\r?\n")) { // OS依存の改行混在対策
-                if (line.startsWith("天気: ")) {
-                    String weatherValue = line.substring(4).trim();
-                    if (!weatherValue.isEmpty()) {
-                        weatherLine = weatherValue.split("[ 　\t]")[0];
-                    }
-                    break;
-                }
-            }
-            forecastPanel.setBackgroundImage(WeatherForecastUtil.getBackgroundImageForWeather(weatherLine));
-            forecastPanel.setTextColor(Color.BLACK);
-            forecastPanel.repaint();
+            showForecastAtIndex(forecastIndex);
             forecastIndex++;
-            prevLineButton.setEnabled(forecastIndex > 1);
-            nextLineButton.setEnabled(forecastIndex < forecastList.size());
+            updateButtonStates();
         } else {
             textPane.setText("これ以上の天気情報はありません。");
-            forecastPanel.setTextColor(Color.BLACK);
-            nextLineButton.setEnabled(false);
             forecastPanel.setBackgroundImage(null);
+            forecastPanel.setTextColor(Color.BLACK);
             forecastPanel.repaint();
+            nextLineButton.setEnabled(false);
         }
     }
 
     private void onPrevLine() {
         if (forecastIndex > 1) {
             forecastIndex--;
-            WeatherForecastUtil.setStyledText(textPane, forecastList.get(forecastIndex - 1));
-            String weatherLine = "";
-            for (String line : forecastList.get(forecastIndex - 1).split("\r?\n")) { // OS依存の改行混在対策
-                if (line.startsWith("天気: ")) {
-                    String weatherValue = line.substring(4).trim();
-                    if (!weatherValue.isEmpty()) {
-                        weatherLine = weatherValue.split("[ 　\t]")[0];
-                    }
-                    break;
-                }
-            }
-            forecastPanel.setBackgroundImage(WeatherForecastUtil.getBackgroundImageForWeather(weatherLine));
+            showForecastAtIndex(forecastIndex - 1);
+            updateButtonStates();
+        }
+    }
+
+    private void showForecastAtIndex(int index) {
+        if (index >= 0 && index < forecastList.size()) {
+            String forecast = forecastList.get(index);
+            String weather = extractWeather(forecast);
+            WeatherForecastUtil.setStyledText(textPane, forecast);
+            forecastPanel.setBackgroundImage(WeatherForecastUtil.getBackgroundImageForWeather(weather));
             forecastPanel.setTextColor(Color.BLACK);
             forecastPanel.repaint();
-            prevLineButton.setEnabled(forecastIndex > 1);
-            nextLineButton.setEnabled(forecastIndex < forecastList.size());
         }
+    }
+
+    private String extractWeather(String forecast) {
+        for (String line : forecast.split("\r?\n")) {
+            if (line.startsWith("天気: ")) {
+                String weatherValue = line.substring(4).trim();
+                return weatherValue.isEmpty() ? "" : weatherValue.split("[ 　\t]")[0];
+            }
+        }
+        return "";
+    }
+
+    private void updateButtonStates() {
+        prevLineButton.setEnabled(forecastIndex > 1);
+        nextLineButton.setEnabled(forecastIndex < forecastList.size());
     }
 }

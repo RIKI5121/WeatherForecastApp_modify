@@ -1,14 +1,15 @@
 import javax.swing.*;
+import javax.swing.text.*;
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
 import java.time.*;
 import java.util.*;
-import javax.imageio.ImageIO;
-import org.json.*;
-import javax.swing.text.*;
 import java.util.List;
+
+import org.json.*;
 
 public class WeatherForecastUtil {
     public static final Map<String, String> REGION_CODES = Map.ofEntries(
@@ -33,6 +34,11 @@ public class WeatherForecastUtil {
         List<String> result = new ArrayList<>();
         try {
             String code = REGION_CODES.get(region);
+            if (code == null) {
+                result.add("指定された地域は存在しません。");
+                return result;
+            }
+
             URI uri = URI.create("https://www.jma.go.jp/bosai/forecast/data/forecast/" + code + ".json");
             HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
             conn.setRequestMethod("GET");
@@ -46,26 +52,12 @@ public class WeatherForecastUtil {
             }
 
             JSONArray rootArray = new JSONArray(jsonText.toString());
-            JSONObject weatherRoot = rootArray.getJSONObject(0);
-            JSONArray timeSeriesArray = weatherRoot.getJSONArray("timeSeries");
+            JSONArray timeSeriesArray = rootArray.getJSONObject(0).getJSONArray("timeSeries");
 
-            JSONObject weatherPart = null, popPart = null, windPart = null, tempPart = null;
-
-            for (int i = 0; i < timeSeriesArray.length(); i++) {
-                JSONObject ts = timeSeriesArray.getJSONObject(i);
-                JSONArray areas = ts.getJSONArray("areas");
-                for (int j = 0; j < areas.length(); j++) {
-                    JSONObject area = areas.getJSONObject(j);
-                    if (weatherPart == null && area.has("weathers"))
-                        weatherPart = ts;
-                    if (popPart == null && area.has("pops"))
-                        popPart = ts;
-                    if (windPart == null && area.has("winds"))
-                        windPart = ts;
-                    if (tempPart == null && (area.has("temps") || area.has("tempMin") || area.has("tempMax")))
-                        tempPart = ts;
-                }
-            }
+            JSONObject weatherPart = findTimeSeriesWithKey(timeSeriesArray, "weathers");
+            JSONObject popPart = findTimeSeriesWithKey(timeSeriesArray, "pops");
+            JSONObject windPart = findTimeSeriesWithKey(timeSeriesArray, "winds");
+            JSONObject tempPart = findTimeSeriesWithKey(timeSeriesArray, "temps");
 
             if (weatherPart == null || popPart == null || windPart == null) {
                 result.add("必要な天気情報が取得できませんでした。");
@@ -104,45 +96,14 @@ public class WeatherForecastUtil {
                 String dateTime = weatherTimes.get(i);
                 String weather = weathers.get(i);
 
-                StringBuilder popInfo = new StringBuilder();
-                for (int j = 0; j < popTimes.size() && j < pops.size(); j++) {
-                    String popTime = popTimes.get(j);
-                    if (popTime.substring(0, 10).equals(dateTime.substring(0, 10))) {
-                        String start = popTime.substring(11, 16);
-                        String end;
-                        if (j + 1 < popTimes.size()
-                                && popTimes.get(j + 1).substring(0, 10).equals(popTime.substring(0, 10))) {
-                            end = popTimes.get(j + 1).substring(11, 16);
-                        } else {
-                            end = "00:00";
-                        }
-                        popInfo.append(String.format("降水確率（%s〜%s）: %s%%\n", start, end, pops.get(j)));
-                    }
-                }
-
-                String windInfo = "";
-                for (int j = 0; j < windTimes.size() && j < winds.size(); j++) {
-                    if (windTimes.get(j).substring(0, 10).equals(dateTime.substring(0, 10))) {
-                        windInfo = "風向き: " + winds.get(j);
-                        break;
-                    }
-                }
-
-                String tempInfo = "";
-                for (int j = 0; j < tempTimes.size() && j < temps.size(); j++) {
-                    String tempDate = tempTimes.get(j).substring(0, 10);
-                    String tempHour = tempTimes.get(j).substring(11, 13);
-                    if (tempDate.equals(dateTime.substring(0, 10)) && tempHour.equals("09")) {
-                        tempInfo = "最高気温: " + temps.get(j) + "℃\n";
-                        break;
-                    }
-                }
+                String popInfo = buildPopInfo(dateTime, popTimes, pops);
+                String windInfo = buildWindInfo(dateTime, windTimes, winds);
+                String tempInfo = buildTempInfo(dateTime, tempTimes, temps);
 
                 String line = String.format("日時: %s\n天気: %s\n%s%s%s",
-                        formatDateTime(dateTime), weather,
-                        tempInfo,
-                        popInfo.toString(),
+                        formatDateTime(dateTime), weather, tempInfo, popInfo,
                         windInfo.isEmpty() ? "" : windInfo + "\n");
+
                 result.add(line);
             }
 
@@ -150,7 +111,53 @@ public class WeatherForecastUtil {
             e.printStackTrace();
             result.add("天気情報の取得中にエラーが発生しました。");
         }
+
         return result;
+    }
+
+    private static JSONObject findTimeSeriesWithKey(JSONArray timeSeriesArray, String key) {
+        for (int i = 0; i < timeSeriesArray.length(); i++) {
+            JSONObject ts = timeSeriesArray.getJSONObject(i);
+            JSONArray areas = ts.getJSONArray("areas");
+            if (areas.length() > 0 && areas.getJSONObject(0).has(key)) {
+                return ts;
+            }
+        }
+        return null;
+    }
+
+    private static String buildPopInfo(String date, List<String> times, List<String> values) {
+        StringBuilder sb = new StringBuilder();
+        for (int j = 0; j < times.size() && j < values.size(); j++) {
+            if (times.get(j).startsWith(date.substring(0, 10))) {
+                String start = times.get(j).substring(11, 16);
+                String end = (j + 1 < times.size() && times.get(j + 1).startsWith(date.substring(0, 10)))
+                        ? times.get(j + 1).substring(11, 16)
+                        : "00:00";
+                sb.append(String.format("降水確率（%s〜%s）: %s%%\n", start, end, values.get(j)));
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String buildWindInfo(String date, List<String> times, List<String> values) {
+        for (int j = 0; j < times.size() && j < values.size(); j++) {
+            if (times.get(j).startsWith(date.substring(0, 10))) {
+                return "風向き: " + values.get(j);
+            }
+        }
+        return "";
+    }
+
+    private static String buildTempInfo(String date, List<String> times, List<String> values) {
+        for (int j = 0; j < times.size() && j < values.size(); j++) {
+            String tempDate = times.get(j).substring(0, 10);
+            String tempHour = times.get(j).substring(11, 13);
+            if (tempDate.equals(date.substring(0, 10)) && tempHour.equals("09")) {
+                return "最高気温: " + values.get(j) + "℃\n";
+            }
+        }
+        return "";
     }
 
     public static List<String> getStringList(JSONArray jsonArray) {
@@ -168,35 +175,34 @@ public class WeatherForecastUtil {
             OffsetDateTime odt = OffsetDateTime.parse(dateTime);
             ZonedDateTime zdt = odt.atZoneSameInstant(ZoneId.systemDefault());
             LocalDate date = zdt.toLocalDate();
-            DayOfWeek dayOfWeek = date.getDayOfWeek();
-            String[] japaneseDays = { "月", "火", "水", "木", "金", "土", "日" };
-            // JavaのDayOfWeekは月曜=1, 日曜=7。配列indexは0(月)～6(日)なので-1する
-            String dayName = japaneseDays[dayOfWeek.getValue() - 1];
-            return String.format("%d年%d月%d日（%s曜日）",
-                    date.getYear(), date.getMonthValue(), date.getDayOfMonth(), dayName);
+            String[] days = { "月", "火", "水", "木", "金", "土", "日" };
+            return String.format("%d年%d月%d日（%s曜日）", date.getYear(), date.getMonthValue(),
+                    date.getDayOfMonth(), days[date.getDayOfWeek().getValue() - 1]);
         } catch (Exception e) {
             return dateTime;
         }
     }
 
     public static BufferedImage getBackgroundImageForWeather(String weather) {
-        String imgPath;
-        if (weather != null && (weather.contains("くもり") || weather.contains("曇"))) {
-            imgPath = "backgrounds/cloudy.jpg";
-        } else if (weather != null && (weather.contains("晴れ") || weather.contains("晴"))) {
-            imgPath = "backgrounds/sunny.jpg";
-        } else if (weather != null && weather.contains("雨")) {
-            imgPath = "backgrounds/rainy.jpg";
-        } else if (weather != null && weather.contains("雪")) {
-            imgPath = "backgrounds/snowy.jpg";
+        String path;
+        if (weather == null) {
+            path = "backgrounds/default.jpg";
+        } else if (weather.contains("晴")) {
+            path = "backgrounds/sunny.jpg";
+        } else if (weather.contains("くもり") || weather.contains("曇")) {
+            path = "backgrounds/cloudy.jpg";
+        } else if (weather.contains("雨")) {
+            path = "backgrounds/rainy.jpg";
+        } else if (weather.contains("雪")) {
+            path = "backgrounds/snowy.jpg";
         } else {
-            imgPath = "backgrounds/default.jpg";
+            path = "backgrounds/default.jpg";
         }
 
         try {
-            return ImageIO.read(new File(imgPath));
+            return ImageIO.read(new File(path));
         } catch (IOException e) {
-            System.err.println("背景画像の読み込みに失敗しました: " + imgPath);
+            System.err.println("背景画像の読み込み失敗: " + path);
             return null;
         }
     }
@@ -207,13 +213,14 @@ public class WeatherForecastUtil {
         SimpleAttributeSet bold = new SimpleAttributeSet();
         StyleConstants.setBold(bold, true);
         StyleConstants.setFontSize(bold, 22);
-        // 文字色は黒、背景（マーカー）は薄いグレー（例: new Color(255,255,255,180)）
         StyleConstants.setForeground(bold, Color.BLACK);
         StyleConstants.setBackground(bold, new Color(255, 255, 255, 180));
+
         SimpleAttributeSet normal = new SimpleAttributeSet();
         StyleConstants.setFontSize(normal, 20);
         StyleConstants.setForeground(normal, Color.BLACK);
         StyleConstants.setBackground(normal, new Color(255, 255, 255, 180));
+
         String[] lines = text.split("\n", 2);
         try {
             doc.insertString(doc.getLength(), lines[0] + "\n", bold);
