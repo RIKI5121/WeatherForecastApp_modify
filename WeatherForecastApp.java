@@ -121,13 +121,21 @@ public class WeatherForecastApp {
             forecastIndex[0] = 0;
             setStyledText(textPane, forecastList.get(0));
             forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherDescriptions.get(0)));
+            String bgImg = "";
             if (weatherDescriptions.get(0) != null) {
                 String w = weatherDescriptions.get(0);
                 if (w.contains("晴れ") || w.contains("晴")) {
-                    forecastPanel.setTextColor(Color.BLACK);
-                } else {
-                    forecastPanel.setTextColor(Color.WHITE);
+                    bgImg = "sunny.jpg";
+                } else if (w.contains("くもり") || w.contains("曇")) {
+                    bgImg = "cloudy.jpg";
+                } else if (w.contains("雨")) {
+                    bgImg = "rainy.jpg";
                 }
+            }
+            if ("sunny.jpg".equals(bgImg)) {
+                forecastPanel.setTextColor(Color.BLACK);
+            } else if ("cloudy.jpg".equals(bgImg) || "rainy.jpg".equals(bgImg)) {
+                forecastPanel.setTextColor(Color.WHITE);
             } else {
                 forecastPanel.setTextColor(Color.WHITE);
             }
@@ -152,8 +160,7 @@ public class WeatherForecastApp {
                     }
                 }
                 forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherLine));
-                if (weatherLine != null && (weatherLine.contains("晴れ") || weatherLine.contains("晴")
-                        || weatherLine.contains("くもり") || weatherLine.contains("曇") || weatherLine.contains("雨"))) {
+                if (weatherLine != null && (weatherLine.contains("晴れ") || weatherLine.contains("晴"))) {
                     forecastPanel.setTextColor(Color.BLACK);
                 } else if (weatherLine != null
                         && (weatherLine.contains("くもり") || weatherLine.contains("曇") || weatherLine.contains("雨"))) {
@@ -346,7 +353,8 @@ public class WeatherForecastApp {
             LocalDate date = zdt.toLocalDate();
             DayOfWeek dayOfWeek = date.getDayOfWeek();
             String[] japaneseDays = { "月", "火", "水", "木", "金", "土", "日" };
-            String dayName = japaneseDays[dayOfWeek.getValue() % 7];
+            // JavaのDayOfWeekは月曜=1, 日曜=7。配列indexは0(月)～6(日)なので-1する
+            String dayName = japaneseDays[dayOfWeek.getValue() - 1];
             return String.format("%d年%d月%d日（%s曜日）",
                     date.getYear(), date.getMonthValue(), date.getDayOfMonth(), dayName);
         } catch (Exception e) {
@@ -427,10 +435,13 @@ public class WeatherForecastApp {
         SimpleAttributeSet bold = new SimpleAttributeSet();
         StyleConstants.setBold(bold, true);
         StyleConstants.setFontSize(bold, 22);
-        StyleConstants.setForeground(bold, textPane.getForeground());
+        // 文字色は黒、背景（マーカー）は薄いグレー（例: new Color(255,255,255,180)）
+        StyleConstants.setForeground(bold, Color.BLACK);
+        StyleConstants.setBackground(bold, new Color(255, 255, 255, 180));
         SimpleAttributeSet normal = new SimpleAttributeSet();
         StyleConstants.setFontSize(normal, 20);
-        StyleConstants.setForeground(normal, textPane.getForeground());
+        StyleConstants.setForeground(normal, Color.BLACK);
+        StyleConstants.setBackground(normal, new Color(255, 255, 255, 180));
         String[] lines = text.split("\n", 2);
         try {
             doc.insertString(doc.getLength(), lines[0] + "\n", bold);
