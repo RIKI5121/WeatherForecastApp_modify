@@ -58,6 +58,11 @@ public class WeatherForecastApp {
         showInputButton.setFont(new Font("Meiryo", Font.BOLD, 18));
         inputPanel.add(showInputButton);
 
+        JButton prevLineButton = new JButton("前の天気を表示");
+        prevLineButton.setFont(new Font("Meiryo", Font.BOLD, 18));
+        prevLineButton.setEnabled(false);
+        inputPanel.add(prevLineButton);
+
         JButton nextLineButton = new JButton("次の天気を表示");
         nextLineButton.setFont(new Font("Meiryo", Font.BOLD, 18));
         nextLineButton.setEnabled(false);
@@ -90,6 +95,7 @@ public class WeatherForecastApp {
             if (detailedForecasts.isEmpty()) {
                 textPane.setText("天気情報が取得できませんでした。");
                 nextLineButton.setEnabled(false);
+                prevLineButton.setEnabled(false);
                 forecastPanel.setBackgroundImage(null);
                 forecastPanel.repaint();
                 return;
@@ -119,8 +125,6 @@ public class WeatherForecastApp {
                 String w = weatherDescriptions.get(0);
                 if (w.contains("晴れ") || w.contains("晴")) {
                     forecastPanel.setTextColor(Color.BLACK);
-                } else if (w.contains("くもり") || w.contains("曇") || w.contains("雨")) {
-                    forecastPanel.setTextColor(Color.WHITE);
                 } else {
                     forecastPanel.setTextColor(Color.WHITE);
                 }
@@ -131,6 +135,7 @@ public class WeatherForecastApp {
 
             forecastIndex[0] = 1;
             nextLineButton.setEnabled(forecastList.size() > 1);
+            prevLineButton.setEnabled(false);
         });
 
         nextLineButton.addActionListener(_ -> {
@@ -147,18 +152,55 @@ public class WeatherForecastApp {
                     }
                 }
                 forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherLine));
-                if (weatherLine != null && (weatherLine.contains("晴れ") || weatherLine.contains("晴"))) {
+                if (weatherLine != null && (weatherLine.contains("晴れ") || weatherLine.contains("晴")
+                        || weatherLine.contains("くもり") || weatherLine.contains("曇") || weatherLine.contains("雨"))) {
                     forecastPanel.setTextColor(Color.BLACK);
+                } else if (weatherLine != null
+                        && (weatherLine.contains("くもり") || weatherLine.contains("曇") || weatherLine.contains("雨"))) {
+                    forecastPanel.setTextColor(Color.WHITE);
                 } else {
                     forecastPanel.setTextColor(Color.WHITE);
                 }
                 forecastPanel.repaint();
                 forecastIndex[0]++;
+                prevLineButton.setEnabled(forecastIndex[0] > 1);
+                nextLineButton.setEnabled(forecastIndex[0] < forecastList.size());
             } else {
                 textPane.setText("これ以上の天気情報はありません。");
+                forecastPanel.setTextColor(Color.BLACK);
                 nextLineButton.setEnabled(false);
                 forecastPanel.setBackgroundImage(null);
                 forecastPanel.repaint();
+            }
+        });
+
+        prevLineButton.addActionListener(_ -> {
+            if (forecastIndex[0] > 1) {
+                forecastIndex[0]--;
+                setStyledText(textPane, forecastList.get(forecastIndex[0] - 1));
+                String weatherLine = "";
+                for (String line : forecastList.get(forecastIndex[0] - 1).split("\n")) {
+                    if (line.startsWith("天気: ")) {
+                        String weatherValue = line.substring(4).trim();
+                        if (!weatherValue.isEmpty()) {
+                            weatherLine = weatherValue.split("[ 　\t]")[0];
+                        }
+                        break;
+                    }
+                }
+                forecastPanel.setBackgroundImage(getBackgroundImageForWeather(weatherLine));
+                if (weatherLine != null && (weatherLine.contains("晴れ") || weatherLine.contains("晴")
+                        || weatherLine.contains("くもり") || weatherLine.contains("曇") || weatherLine.contains("雨"))) {
+                    forecastPanel.setTextColor(Color.BLACK);
+                } else if (weatherLine != null
+                        && (weatherLine.contains("くもり") || weatherLine.contains("曇") || weatherLine.contains("雨"))) {
+                    forecastPanel.setTextColor(Color.WHITE);
+                } else {
+                    forecastPanel.setTextColor(Color.WHITE);
+                }
+                forecastPanel.repaint();
+                prevLineButton.setEnabled(forecastIndex[0] > 1);
+                nextLineButton.setEnabled(forecastIndex[0] < forecastList.size());
             }
         });
     }
@@ -248,7 +290,7 @@ public class WeatherForecastApp {
                                 && popTimes.get(j + 1).substring(0, 10).equals(popTime.substring(0, 10))) {
                             end = popTimes.get(j + 1).substring(11, 16);
                         } else {
-                            end = "--:--";
+                            end = "00:00";
                         }
                         popInfo.append(String.format("降水確率（%s〜%s）: %s%%\n", start, end, pops.get(j)));
                     }
@@ -299,8 +341,14 @@ public class WeatherForecastApp {
 
     private static String formatDateTime(String dateTime) {
         try {
-            LocalDateTime dt = LocalDateTime.parse(dateTime);
-            return dt.format(java.time.format.DateTimeFormatter.ofPattern("M月d日（E）HH時", java.util.Locale.JAPANESE));
+            OffsetDateTime odt = OffsetDateTime.parse(dateTime);
+            ZonedDateTime zdt = odt.atZoneSameInstant(ZoneId.systemDefault());
+            LocalDate date = zdt.toLocalDate();
+            DayOfWeek dayOfWeek = date.getDayOfWeek();
+            String[] japaneseDays = { "月", "火", "水", "木", "金", "土", "日" };
+            String dayName = japaneseDays[dayOfWeek.getValue() % 7];
+            return String.format("%d年%d月%d日（%s曜日）",
+                    date.getYear(), date.getMonthValue(), date.getDayOfMonth(), dayName);
         } catch (Exception e) {
             return dateTime;
         }
